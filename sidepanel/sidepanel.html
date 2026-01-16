@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+    <div id="app">
+        <!-- ヘッダー -->
+        <div class="header">
+            <h1>Backlog Issue Creator</h1>
+        </div>
+
+        <!-- ナビゲーション -->
+        <div class="navigation">
+            <button id="settingsTab" class="nav-button active">Settings</button>
+            <button id="addIssueTab" class="nav-button">Add Issue</button>
+        </div>
+
+        <!-- Settings Panel -->
+        <div id="settingsPanel" class="panel active">
+            <div class="panel-content">
+                <h2>API設定</h2>
+                <div id="settingsContent">
+                    <!-- APIキー未登録時の表示 -->
+                    <div id="apiKeyNotRegistered" class="api-key-section">
+                        <div class="form-group">
+                            <label for="apiKeyInput" class="form-label">BacklogのAPIキー</label>
+                            <input type="password" id="apiKeyInput" class="form-input" placeholder="APIキーを入力してください">
+                        </div>
+                        <div class="form-group">
+                            <label for="domainInput" class="form-label">Backlogドメイン</label>
+                            <input type="text" id="domainInput" class="form-input" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
+                            <div class="form-help">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
+                        </div>
+                        <div class="form-group text-center">
+                            <button id="registerApiKeyBtn" class="btn btn-primary">APIキーを登録</button>
+                        </div>
+                    </div>
+
+                    <!-- APIキー登録済み時の表示 -->
+                    <div id="apiKeyRegistered" class="api-key-section hidden">
+                        <div class="api-key-status">
+                            <div class="status-item">
+                                <span class="status-label">状態:</span>
+                                <span class="status-value success">登録済み</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">ドメイン:</span>
+                                <span id="registeredDomain" class="status-value">-</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">登録日:</span>
+                                <span id="registeredDate" class="status-value">-</span>
+                            </div>
+                        </div>
+                        <div class="form-group text-center">
+                            <button id="changeApiKeyBtn" class="btn btn-secondary mt-2">変更</button>
+                            <button id="deleteApiKeyBtn" class="btn btn-danger mt-2">削除</button>
+                        </div>
+                    </div>
+
+                    <!-- APIキー変更時の表示 -->
+                    <div id="apiKeyChange" class="api-key-section hidden">
+                        <div class="form-group">
+                            <label for="newApiKeyInput" class="form-label">新しいAPIキー</label>
+                            <input type="password" id="newApiKeyInput" class="form-input" placeholder="新しいAPIキーを入力してください">
+                        </div>
+                        <div class="form-group">
+                            <label for="newDomainInput" class="form-label">Backlogドメイン</label>
+                            <input type="text" id="newDomainInput" class="form-input" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
+                            <div class="form-help">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
+                        </div>
+                        <div class="form-group text-center">
+                            <button id="updateApiKeyBtn" class="btn btn-primary">更新</button>
+                            <button id="cancelChangeBtn" class="btn btn-secondary">キャンセル</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 説明文テンプレート設定 -->
+                <h2>説明文テンプレート</h2>
+                <div class="template-editor-section">
+                    <div class="form-group">
+                        <label for="templateEditor" class="form-label">テンプレート</label>
+                        <textarea id="templateEditor" class="form-textarea template-textarea" placeholder="説明文のテンプレートを入力してください" rows="6"></textarea>
+                        <div id="templateCharCounter" class="character-counter-template">0文字</div>
+                        <div class="form-help">
+                            使用可能な変数: <code>{{url}}</code> (現在のページURL), <code>{{title}}</code> (現在のページタイトル)
+                        </div>
+                    </div>
+                    <div class="form-group text-center">
+                        <button id="saveTemplateBtn" class="btn btn-primary">保存</button>
+                        <button id="resetTemplateBtn" class="btn btn-secondary">リセット</button>
+                    </div>
+                    <div id="templateMessage" class="template-message hidden"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Issue Panel -->
+        <div id="addIssuePanel" class="panel">
+            <div class="panel-content">
+                <h2>課題追加</h2>
+                <div id="addIssueContent">
+                    <!-- APIキー未設定時の表示 -->
+                    <div id="apiKeyRequired" class="api-key-required hidden">
+                        <div class="info-message">
+                            <p>課題を追加するには、まずAPIキーを設定してください。</p>
+                            <button id="goToSettingsBtn" class="btn btn-primary">設定画面へ</button>
+                        </div>
+                    </div>
+
+                    <!-- プロジェクト選択セクション -->
+                    <div id="projectSelectionSection" class="project-section">
+                        <div class="form-group">
+                            <label for="projectSelect" class="form-label">プロジェクト選択</label>
+                            <div class="project-select-container">
+                                <input type="text" id="projectSearchInput" class="form-input" placeholder="プロジェクトを検索..." autocomplete="off">
+                                <div id="projectDropdown" class="project-dropdown hidden">
+                                    <div id="projectList" class="project-list">
+                                        <!-- プロジェクト一覧がここに動的に追加される -->
+                                    </div>
+                                    <div id="projectLoading" class="project-loading hidden">
+                                        <p>プロジェクトを読み込み中...</p>
+                                    </div>
+                                    <div id="projectError" class="project-error hidden">
+                                        <p>プロジェクトの読み込みに失敗しました</p>
+                                    </div>
+                                    <div id="noProjectsFound" class="no-projects hidden">
+                                        <p>該当するプロジェクトが見つかりません</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="selectedProject" class="selected-project hidden">
+                                <span class="selected-label">選択中:</span>
+                                <span id="selectedProjectName" class="selected-name"></span>
+                                <button id="clearProjectBtn" class="btn-clear" title="選択を解除">×</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 課題入力フォーム -->
+                    <div id="issueFormSection" class="issue-form-section hidden">
+                        <!-- 課題種別選択セクション -->
+                        <div class="form-group">
+                            <label for="issueTypeSelect" class="form-label">課題種別 <span class="required">*</span></label>
+                            <select id="issueTypeSelect" class="form-input">
+                                <option value="">課題種別を選択してください</option>
+                            </select>
+                            <div id="issueTypeError" class="field-error hidden">課題種別は必須です</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="issueSummary" class="form-label">件名 <span class="required">*</span></label>
+                            <div class="input-container">
+                                <textarea id="issueSummary" class="form-input form-input-summary" placeholder="課題の件名を入力してください" maxlength="255" autocomplete="off" rows="1"></textarea>
+                                <div id="summaryCounter" class="character-counter">0/255</div>
+                            </div>
+                            <div id="summaryError" class="field-error hidden">件名は必須です</div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="issueDescription" class="form-label">説明</label>
+                            <textarea id="issueDescription" class="form-textarea" placeholder="課題の説明（現在のページのURLが自動で挿入されます）" rows="4"></textarea>
+                            <div class="form-help">現在のページのURLとタイトルが自動で挿入されます</div>
+                        </div>
+
+                        <div class="form-group">
+                            <button id="createIssueBtn" class="btn btn-primary btn-full" disabled>課題を作成</button>
+                        </div>
+
+                        <div id="issueCreationStatus" class="creation-status hidden">
+                            <div class="status-message"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- メッセージ表示エリア -->
+        <div id="messageArea" class="message-area hidden"></div>
+    </div>
+    <script src="../shared/state-manager.js"></script>
+    <script src="sidepanel.js"></script>
+</body>
+</html>

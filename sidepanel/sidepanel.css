@@ -1,0 +1,620 @@
+/* Side Panel UI Styles */
+* {
+    box-sizing: border-box;
+}
+
+body {
+    width: 350px; /* デフォルト幅 */
+    min-width: 300px;
+    max-width: 450px;
+    min-height: 100vh;
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 14px;
+    background-color: #f8f9fa;
+    /* サイドパネルの幅調整を可能にする */
+    resize: horizontal;
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    overflow-x: auto;
+    width: 100%;
+}
+
+/* ヘッダー */
+/* ヘッダー */
+.header {
+    background-color: #339900;
+    color: white;
+    padding: 12px 8px;
+    text-align: center;
+}
+
+.header h1 {
+    font-size: 16px;
+    margin: 0;
+    font-weight: 600;
+}
+
+/* ナビゲーション */
+.navigation {
+    display: flex;
+    background-color: #e9ecef;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.nav-button {
+    flex: 1;
+    padding: 12px 8px;
+    border: none;
+    background-color: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #6c757d;
+    transition: all 0.2s ease;
+}
+
+.nav-button:hover {
+    background-color: #dee2e6;
+    color: #495057;
+}
+
+.nav-button.active {
+    background-color: #339900;
+    color: white;
+}
+
+/* パネル */
+.panel {
+    flex: 1;
+    display: none;
+    padding: 8px;
+    background-color: white;
+    overflow-y: auto;
+    box-sizing: border-box;
+}
+
+.panel.active {
+    display: block;
+}
+
+.panel-content h2 {
+    font-size: 16px;
+    margin: 0 0 16px 0;
+    color: #333;
+    font-weight: 600;
+}
+
+/* メッセージエリア */
+.message-area {
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.message-area.hidden {
+    display: none;
+}
+
+.message-area.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.message-area.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* 共通ボタンスタイル */
+.btn {
+    width: 100%;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+}
+
+.btn-primary {
+    background-color: #339900;
+    color: white;
+}
+
+.btn-primary:hover {
+    background-color: #267300;
+}
+
+.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background-color: #545b62;
+}
+
+.btn-danger {
+    background-color: #dc3545;
+    color: white;
+}
+
+.btn-danger:hover {
+    background-color: #c82333;
+}
+
+/* 共通フォームスタイル */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 4px;
+    font-weight: 500;
+    color: #333;
+}
+
+.form-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #339900;
+    box-shadow: 0 0 0 2px rgba(51, 153, 0, 0.25);
+}
+
+/* ユーティリティクラス */
+.text-center {
+    text-align: center;
+}
+
+.mt-2 {
+    margin-top: 8px;
+}
+
+.mb-2 {
+    margin-bottom: 8px;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Settings Panel 専用スタイル */
+.api-key-section {
+    margin-bottom: 16px;
+}
+
+.api-key-status {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.status-item:last-child {
+    margin-bottom: 0;
+}
+
+.status-label {
+    font-weight: 500;
+    color: #6c757d;
+}
+
+.status-value {
+    font-weight: 500;
+    word-break: break-all;
+}
+
+.status-value.success {
+    color: #28a745;
+}
+
+.form-input[type="password"] {
+    font-family: monospace;
+}
+
+/* ボタンの間隔調整 */
+.btn + .btn {
+    margin-left: 8px;
+}
+
+/* レスポンシブ対応: 狭い幅ではボタンを縦に配置 */
+@media (max-width: 400px) {
+    .btn + .btn {
+        margin-left: 0;
+        margin-top: 8px;
+    }
+    
+    .form-group.text-center {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .form-group.text-center .btn {
+        width: 100%;
+    }
+}
+
+/* Add Issue Panel 専用スタイル */
+.api-key-required {
+    text-align: center;
+    padding: 32px 16px;
+}
+
+.info-message {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    padding: 24px;
+}
+
+.info-message p {
+    margin: 0 0 16px 0;
+    color: #6c757d;
+}
+
+/* プロジェクト選択 */
+.project-section {
+    margin-bottom: 24px;
+}
+
+.project-select-container {
+    position: relative;
+}
+
+.project-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background-color: white;
+    border: 1px solid #ced4da;
+    border-top: none;
+    border-radius: 0 0 4px 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.project-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.project-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid #f8f9fa;
+    transition: background-color 0.2s ease;
+}
+
+.project-item:hover {
+    background-color: #f8f9fa;
+}
+
+.project-item:last-child {
+    border-bottom: none;
+}
+
+.project-item.selected {
+    background-color: #339900;
+    color: white;
+}
+
+.project-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+    word-break: break-word;
+}
+
+.project-key {
+    font-size: 12px;
+    color: #6c757d;
+    font-family: monospace;
+}
+
+.project-item.selected .project-key {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.project-loading,
+.project-error,
+.no-projects {
+    padding: 16px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 13px;
+}
+
+.project-error {
+    color: #dc3545;
+}
+
+/* 選択されたプロジェクト表示 */
+.selected-project {
+    display: flex;
+    align-items: center;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: #e6f5e6;
+    border: 1px solid #b3d9b3;
+    border-radius: 4px;
+}
+
+.selected-label {
+    font-size: 12px;
+    color: #267300;
+    margin-right: 8px;
+}
+
+.selected-name {
+    flex: 1;
+    font-weight: 500;
+    color: #267300;
+    word-break: break-word;
+}
+
+.btn-clear {
+    background: none;
+    border: none;
+    color: #6c757d;
+    cursor: pointer;
+    font-size: 16px;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.btn-clear:hover {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* 課題種別選択 */
+.form-input option {
+    padding: 4px 8px;
+}
+
+.form-input option[style*="color"] {
+    font-weight: 500;
+}
+
+/* 課題種別のカラー表示 */
+#issueTypeSelect option {
+    padding: 8px 12px;
+}
+
+/* 課題フォームセクション */
+.issue-form-section {
+    margin-top: 24px;
+}
+
+/* 必須マーク */
+.required {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* 入力コンテナ */
+.input-container {
+    position: relative;
+}
+
+/* 件名入力フィールド（textarea） */
+.form-input-summary {
+    min-height: 36px;
+    max-height: 108px;
+    resize: none;
+    overflow-y: auto;
+    line-height: 1.5;
+    padding-right: 60px; /* 文字数カウンター用のスペース */
+    box-sizing: border-box;
+    transition: height 0.1s ease;
+}
+
+/* 文字数カウンター */
+.character-counter {
+    position: absolute;
+    right: 8px;
+    bottom: 8px;
+    font-size: 11px;
+    color: #6c757d;
+    background-color: white;
+    padding: 2px 4px;
+    border-radius: 2px;
+    pointer-events: none;
+}
+
+.character-counter.warning {
+    color: #fd7e14;
+}
+
+.character-counter.danger {
+    color: #dc3545;
+    font-weight: bold;
+}
+
+/* テキストエリア */
+.form-textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 80px;
+    box-sizing: border-box;
+}
+
+.form-textarea:focus {
+    outline: none;
+    border-color: #339900;
+    box-shadow: 0 0 0 2px rgba(51, 153, 0, 0.25);
+}
+
+/* フォームヘルプテキスト */
+.form-help {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 4px;
+    word-break: break-word;
+}
+
+/* フィールドエラー */
+.field-error {
+    font-size: 12px;
+    color: #dc3545;
+    margin-top: 4px;
+}
+
+/* フルワイドボタン */
+.btn-full {
+    width: 100%;
+}
+
+.btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+    background-color: inherit;
+}
+
+/* 作成ステータス */
+.creation-status {
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.creation-status.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.creation-status.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.creation-status.loading {
+    background-color: #e2e3e5;
+    color: #383d41;
+    border: 1px solid #d6d8db;
+}
+
+.status-message {
+    margin: 0;
+    word-break: break-word;
+}
+
+/* スムーズなスクロール */
+html {
+    scroll-behavior: smooth;
+}
+
+/* 長いテキストの折り返し */
+* {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+/* 入力中のフィールドへの自動スクロール対応 */
+.form-input:focus,
+.form-textarea:focus {
+    scroll-margin-top: 20px;
+}
+
+/* テンプレートエディタセクション */
+.template-editor-section {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 1px solid #e9ecef;
+}
+
+.template-textarea {
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+/* テンプレート用文字数カウンター */
+.character-counter-template {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 4px;
+    text-align: right;
+}
+
+/* コード表示 */
+code {
+    background-color: #f8f9fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    color: #e83e8c;
+}
+
+/* テンプレートメッセージ */
+.template-message {
+    margin-top: 12px;
+    padding: 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.template-message.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.template-message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
