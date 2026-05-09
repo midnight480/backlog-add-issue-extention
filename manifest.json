@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AnyBacklog",
+  "name": "Add Issue",
   "version": "1.0.0",
   "description": "Chrome拡張機能として、BacklogのAPIキー管理と課題追加機能を提供するシステム",
   "minimum_chrome_version": "114",
@@ -13,15 +13,33 @@
   "host_permissions": [
     "https://*.backlog.jp/*",
     "https://*.backlog.com/*",
-    "https://*.zendesk.com/*"
+    "https://*.backlogtool.com/*",
+    "https://*.zendesk.com/*",
+    "https://*.intercom.com/*",
+    "https://*.intercom.io/*",
+    "https://*.my.connect.aws/*",
+    "https://*.awsapps.com/*",
+    "https://*.manageengine.com/*",
+    "https://*.manageengine.jp/*",
+    "https://*.hubspot.com/*",
+    "https://*.salesforce.com/*",
+    "https://*.force.com/*",
+    "https://*.cybozu.com/*",
+    "https://*.kintone.com/*"
   ],
   "background": {
     "service_worker": "background/service-worker.js"
   },
-  "content_scripts": [{
-    "matches": ["<all_urls>"],
-    "js": ["content/url-extractor.js"]
-  }],
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/url-extractor.js"
+      ]
+    }
+  ],
   "action": {
     "default_icon": {
       "16": "assets/icon16.png",

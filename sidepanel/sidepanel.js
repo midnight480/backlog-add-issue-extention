@@ -158,7 +158,7 @@ class SidePanelUI {
         // お気に入りプロジェクトをストレージから読み込む（最後に実行）
         await this.loadFavoriteProjectsFromStorage();
 
-        console.log('Backlog Issue Creator Side Panel initialized');
+        console.log('Add Issue Side Panel initialized');
     }
 
     /**

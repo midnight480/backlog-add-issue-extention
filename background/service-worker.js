@@ -10,7 +10,7 @@
 
 // Service Worker のインストール時の処理
 chrome.runtime.onInstalled.addListener((details) => {
-  console.log('Backlog Issue Creator Service Worker installed:', details.reason);
+  console.log('Add Issue Service Worker installed:', details.reason);
   
   // 初回インストール時の初期化処理
   if (details.reason === 'install') {
@@ -29,7 +29,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Service Worker の起動時の処理
 chrome.runtime.onStartup.addListener(() => {
-  console.log('Backlog Issue Creator Service Worker started');
+  console.log('Add Issue Service Worker started');
 });
 
 // 他のコンポーネントからのメッセージ処理
@@ -857,7 +857,7 @@ async function handleGetActiveTabPageInfo() {
   }
 }
 
-console.log('Backlog Issue Creator Service Worker loaded');
+console.log('Add Issue Service Worker loaded');
 
 /**
  * エラー回復とシステム安定性機能
