@@ -64,7 +64,20 @@ class SidePanelUI {
         this.clearProjectBtn = document.getElementById('clearProjectBtn');
         this.issueFormSection = document.getElementById('issueFormSection');
 
-        // 課題入力フォームの要素
+        // お気に入りプロジェクト関連の要素（Settings）
+        this.loadFavoriteProjectsBtn = document.getElementById('loadFavoriteProjectsBtn');
+        this.favoriteProjectsLoading = document.getElementById('favoriteProjectsLoading');
+        this.favoriteProjectsError = document.getElementById('favoriteProjectsError');
+        this.favoriteProjectsList = document.getElementById('favoriteProjectsList');
+        this.saveFavoriteProjectsBtn = document.getElementById('saveFavoriteProjectsBtn');
+        this.saveFavoriteProjectsGroup = document.getElementById('saveFavoriteProjectsGroup');
+        this.favoriteProjectsMessage = document.getElementById('favoriteProjectsMessage');
+
+        // お気に入りプロジェクト関連の要素（Add Issue）
+        this.favoriteProjectSelect = document.getElementById('favoriteProjectSelect');
+        this.noFavoriteProjectsMessage = document.getElementById('noFavoriteProjectsMessage');
+        this.goToSettingsForFavoritesBtn = document.getElementById('goToSettingsForFavoritesBtn');
+
         this.issueTypeSelect = document.getElementById('issueTypeSelect');
         this.issueTypeError = document.getElementById('issueTypeError');
         this.issueSummary = document.getElementById('issueSummary');
@@ -80,6 +93,10 @@ class SidePanelUI {
         this.selectedProjectData = null;
         this.projectIssueTypes = [];
         this.projectsLoaded = false; // 要件7.1: プロジェクト一覧の遅延読み込みフラグ
+
+        // お気に入りプロジェクト関連の状態
+        this.favoriteProjectsData = []; // Settings用: 全プロジェクト一覧
+        this.favoriteProjectIds = new Set(); // 選択済みプロジェクトIDのセット
 
         // 課題フォーム関連の状態
         this.currentPageInfo = null;
@@ -128,6 +145,9 @@ class SidePanelUI {
 
         // クローズメッセージのリスナーを設定
         this.setupCloseMessageListener();
+
+        // お気に入りプロジェクトをストレージから読み込む（最後に実行）
+        await this.loadFavoriteProjectsFromStorage();
 
         console.log('Backlog Issue Creator Side Panel initialized');
     }
@@ -483,6 +503,11 @@ class SidePanelUI {
      * 幅の監視と保存のセットアップ
      */
     setupWidthObserver() {
+        // ResizeObserverが利用可能な場合のみセットアップ
+        if (typeof ResizeObserver === 'undefined') {
+            console.warn('ResizeObserverが利用できません。幅の監視をスキップします。');
+            return;
+        }
         // ResizeObserverを使用してbodyの幅変更を監視
         this.resizeObserver = new ResizeObserver(this.debounceWidthSave.bind(this));
         this.resizeObserver.observe(document.body);
@@ -571,17 +596,14 @@ class SidePanelUI {
     async loadState() {
         const state = await this.stateManager.loadState();
 
-        // プロジェクトの復元
+        // プロジェクトの復元（favoriteProjectSelectへの反映はrenderFavoriteProjectsInAddIssueで行う）
         if (state.selectedProject) {
             this.selectedProjectData = state.selectedProject;
-            this.selectedProjectName.textContent = `${state.selectedProject.name} (${state.selectedProject.projectKey})`;
-            this.selectedProject.classList.remove('hidden');
             this.issueFormSection.classList.remove('hidden');
             
             // プロジェクトの課題種別を読み込み
             await this.loadProjectIssueTypes(state.selectedProject.id);
         }
-
         // 課題種別の復元
         if (state.issueType && this.issueTypeSelect) {
             this.issueTypeSelect.value = state.issueType;
@@ -666,35 +688,77 @@ class SidePanelUI {
             this.showPanel('settings');
         });
 
-        // プロジェクト検索のイベント
-        this.projectSearchInput.addEventListener('input', (e) => {
-            this.handleProjectSearch(e.target.value);
-        });
+        // プロジェクト検索のイベント（後方互換性のため残す）
+        if (this.projectSearchInput) {
+            this.projectSearchInput.addEventListener('input', (e) => {
+                this.handleProjectSearch(e.target.value);
+            });
 
-        this.projectSearchInput.addEventListener('focus', async () => {
-            // 要件7.1: プロジェクト一覧の遅延読み込み
-            // フォーカス時に初めてプロジェクト一覧を読み込む
-            if (!this.projectsLoaded) {
-                await this.loadProjects();
-            } else {
-                this.showProjectDropdown();
-            }
-        });
-
-        this.projectSearchInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                if (!this.projectDropdown.contains(document.activeElement)) {
-                    this.hideProjectDropdown();
+            this.projectSearchInput.addEventListener('focus', async () => {
+                // 要件7.1: プロジェクト一覧の遅延読み込み
+                // フォーカス時に初めてプロジェクト一覧を読み込む
+                if (!this.projectsLoaded) {
+                    await this.loadProjects();
+                } else {
+                    this.showProjectDropdown();
                 }
-            }, 150);
-        });
+            });
 
-        // プロジェクト選択解除
-        this.clearProjectBtn.addEventListener('click', () => {
-            this.clearSelectedProject();
-        });
+            this.projectSearchInput.addEventListener('blur', () => {
+                setTimeout(() => {
+                    if (this.projectDropdown && !this.projectDropdown.contains(document.activeElement)) {
+                        this.hideProjectDropdown();
+                    }
+                }, 150);
+            });
+        }
 
-        // 課題種別選択のイベント
+        // プロジェクト選択解除（後方互換性のため残す）
+        if (this.clearProjectBtn) {
+            this.clearProjectBtn.addEventListener('click', () => {
+                this.clearSelectedProject();
+            });
+        }
+
+        // お気に入りプロジェクト関連のイベント（Settings）
+        if (this.loadFavoriteProjectsBtn) {
+            this.loadFavoriteProjectsBtn.addEventListener('click', async () => {
+                await this.loadAllProjectsForFavorites();
+            });
+        }
+
+        if (this.saveFavoriteProjectsBtn) {
+            this.saveFavoriteProjectsBtn.addEventListener('click', async () => {
+                await this.saveFavoriteProjects();
+            });
+        }
+
+        // お気に入りプロジェクト選択（Add Issue）
+        if (this.favoriteProjectSelect) {
+            this.favoriteProjectSelect.addEventListener('change', async (e) => {
+                const selectedId = parseInt(e.target.value, 10);
+                if (selectedId) {
+                    const project = this.getFavoriteProjectById(selectedId);
+                    if (project) {
+                        await this.selectProject(project);
+                    }
+                } else {
+                    // 未選択に戻した場合
+                    this.selectedProjectData = null;
+                    this.issueFormSection.classList.add('hidden');
+                    this.clearIssueTypes();
+                    await this.saveState();
+                }
+            });
+        }
+
+        // Settings誘導ボタン（お気に入り未設定時）
+        if (this.goToSettingsForFavoritesBtn) {
+            this.goToSettingsForFavoritesBtn.addEventListener('click', () => {
+                this.showPanel('settings');
+            });
+        }
+
         this.issueTypeSelect.addEventListener('change', (e) => {
             this.handleIssueTypeChange(e.target.value);
         });
@@ -718,7 +782,7 @@ class SidePanelUI {
 
         // ドキュメント全体のクリックイベント
         document.addEventListener('click', (e) => {
-            if (!this.projectSelectionSection.contains(e.target)) {
+            if (this.projectSelectionSection && !this.projectSelectionSection.contains(e.target)) {
                 this.hideProjectDropdown();
             }
         });
@@ -949,15 +1013,9 @@ class SidePanelUI {
             }
 
             this.showProjectSelectionView();
-            
-            // プロジェクト一覧は遅延読み込み（必要になるまで読み込まない）
-            // ユーザーがプロジェクト検索フィールドにフォーカスした時に読み込む
-            if (!this.projectsLoaded) {
-                console.log('プロジェクト一覧は遅延読み込みされます');
-            } else {
-                // 既に読み込まれている場合は表示
-                this.renderProjectList();
-            }
+
+            // お気に入りプロジェクトをプルダウンに描画
+            await this.renderFavoriteProjectsInAddIssue();
             
         } catch (error) {
             console.error('Add Issue Panel初期化エラー:', error);
@@ -985,6 +1043,208 @@ class SidePanelUI {
         } else {
             this.issueFormSection.classList.add('hidden');
         }
+    }
+
+    /**
+     * お気に入りプロジェクトをストレージから読み込む
+     * @returns {Promise<void>}
+     */
+    async loadFavoriteProjectsFromStorage() {
+        try {
+            const response = await this.sendMessageToBackground('getFavoriteProjects');
+            if (response && response.success) {
+                this.favoriteProjectIds = new Set(response.projects.map(p => p.id));
+                console.log('お気に入りプロジェクトを読み込みました:', response.projects.length + '件');
+            }
+        } catch (error) {
+            console.error('お気に入りプロジェクト読み込みエラー:', error);
+        }
+    }
+
+    /**
+     * Settingsパネル用: 全プロジェクトを読み込んでチェックボックス一覧を表示
+     * @returns {Promise<void>}
+     */
+    async loadAllProjectsForFavorites() {
+        try {
+            // ローディング表示
+            this.favoriteProjectsLoading.classList.remove('hidden');
+            this.favoriteProjectsError.classList.add('hidden');
+            this.favoriteProjectsList.classList.add('hidden');
+            this.saveFavoriteProjectsGroup.style.display = 'none';
+
+            const response = await this.sendMessageToBackground('getProjects');
+
+            if (response.success) {
+                this.favoriteProjectsData = response.projects;
+                this.favoriteProjectsLoading.classList.add('hidden');
+                this.renderFavoriteProjectsList();
+                this.favoriteProjectsList.classList.remove('hidden');
+                this.saveFavoriteProjectsGroup.style.display = '';
+                console.log('Settings用プロジェクト一覧を読み込みました:', response.projects.length + '件');
+            } else {
+                this.favoriteProjectsLoading.classList.add('hidden');
+                this.favoriteProjectsError.classList.remove('hidden');
+                this.showMessage(`プロジェクトの読み込みに失敗しました: ${response.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('Settings用プロジェクト読み込みエラー:', error);
+            this.favoriteProjectsLoading.classList.add('hidden');
+            this.favoriteProjectsError.classList.remove('hidden');
+            this.showMessage('プロジェクトの読み込みに失敗しました', 'error');
+        }
+    }
+
+    /**
+     * お気に入りプロジェクトのチェックボックスリストを描画
+     */
+    renderFavoriteProjectsList() {
+        this.favoriteProjectsList.innerHTML = '';
+
+        if (this.favoriteProjectsData.length === 0) {
+            this.favoriteProjectsList.innerHTML = '<p style="padding:8px;color:#6c757d;font-size:13px;">プロジェクトが見つかりません</p>';
+            return;
+        }
+
+        this.favoriteProjectsData.forEach(project => {
+            const item = document.createElement('div');
+            item.className = 'favorite-project-item';
+
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `fav-proj-${project.id}`;
+            checkbox.value = project.id;
+            checkbox.checked = this.favoriteProjectIds.has(project.id);
+            checkbox.setAttribute('data-testid', `favorite-project-checkbox-${project.id}`);
+
+            const label = document.createElement('label');
+            label.htmlFor = `fav-proj-${project.id}`;
+            label.innerHTML = `
+                <span class="project-name">${this.escapeHtml(project.name)}</span>
+                <span class="project-key">${this.escapeHtml(project.projectKey)}</span>
+            `;
+
+            item.appendChild(checkbox);
+            item.appendChild(label);
+            this.favoriteProjectsList.appendChild(item);
+        });
+    }
+
+    /**
+     * お気に入りプロジェクトを保存する
+     * @returns {Promise<void>}
+     */
+    async saveFavoriteProjects() {
+        try {
+            this.saveFavoriteProjectsBtn.disabled = true;
+            this.saveFavoriteProjectsBtn.textContent = '保存中...';
+
+            // チェックされたプロジェクトを収集
+            const checkboxes = this.favoriteProjectsList.querySelectorAll('input[type="checkbox"]:checked');
+            const selectedProjects = [];
+
+            checkboxes.forEach(checkbox => {
+                const projectId = parseInt(checkbox.value, 10);
+                const project = this.favoriteProjectsData.find(p => p.id === projectId);
+                if (project) {
+                    selectedProjects.push({
+                        id: project.id,
+                        projectKey: project.projectKey,
+                        name: project.name
+                    });
+                }
+            });
+
+            const response = await this.sendMessageToBackground('saveFavoriteProjects', {
+                projects: selectedProjects
+            });
+
+            if (response.success) {
+                // 選択済みIDセットを更新
+                this.favoriteProjectIds = new Set(selectedProjects.map(p => p.id));
+                this.showFavoriteProjectsMessage('お気に入りプロジェクトを保存しました', 'success');
+                console.log('お気に入りプロジェクトを保存しました:', selectedProjects.length + '件');
+            } else {
+                this.showFavoriteProjectsMessage('保存に失敗しました。再度お試しください。', 'error');
+            }
+        } catch (error) {
+            console.error('お気に入りプロジェクト保存エラー:', error);
+            this.showFavoriteProjectsMessage('保存中にエラーが発生しました', 'error');
+        } finally {
+            this.saveFavoriteProjectsBtn.disabled = false;
+            this.saveFavoriteProjectsBtn.textContent = '保存';
+        }
+    }
+
+    /**
+     * お気に入りプロジェクトのメッセージを表示（3秒後に自動非表示）
+     * @param {string} message - メッセージ
+     * @param {string} type - 'success' または 'error'
+     */
+    showFavoriteProjectsMessage(message, type) {
+        this.favoriteProjectsMessage.textContent = message;
+        this.favoriteProjectsMessage.className = `favorite-projects-message ${type}`;
+        this.favoriteProjectsMessage.classList.remove('hidden');
+
+        setTimeout(() => {
+            this.favoriteProjectsMessage.classList.add('hidden');
+        }, 3000);
+    }
+
+    /**
+     * Add Issueパネル用: お気に入りプロジェクトをプルダウンに描画
+     * @returns {Promise<void>}
+     */
+    async renderFavoriteProjectsInAddIssue() {
+        try {
+            const response = await this.sendMessageToBackground('getFavoriteProjects');
+
+            if (!response.success || response.projects.length === 0) {
+                // お気に入り未設定: メッセージを表示
+                this.noFavoriteProjectsMessage.classList.remove('hidden');
+                this.favoriteProjectSelect.classList.add('hidden');
+                this.issueFormSection.classList.add('hidden');
+                return;
+            }
+
+            // プルダウンを構築
+            this.favoriteProjectSelect.innerHTML = '<option value="">プロジェクトを選択してください</option>';
+            response.projects.forEach(project => {
+                const option = document.createElement('option');
+                option.value = project.id;
+                option.textContent = `${this.escapeHtml(project.name)} (${this.escapeHtml(project.projectKey)})`;
+                this.favoriteProjectSelect.appendChild(option);
+            });
+
+            this.noFavoriteProjectsMessage.classList.add('hidden');
+            this.favoriteProjectSelect.classList.remove('hidden');
+
+            // 保存済みの選択プロジェクトを復元
+            if (this.selectedProjectData) {
+                this.favoriteProjectSelect.value = this.selectedProjectData.id;
+                this.issueFormSection.classList.remove('hidden');
+            }
+
+            console.log('お気に入りプロジェクトをプルダウンに描画しました:', response.projects.length + '件');
+        } catch (error) {
+            console.error('お気に入りプロジェクト描画エラー:', error);
+            this.noFavoriteProjectsMessage.classList.remove('hidden');
+            this.favoriteProjectSelect.classList.add('hidden');
+        }
+    }
+
+    /**
+     * IDでお気に入りプロジェクトを検索する
+     * @param {number} id - プロジェクトID
+     * @returns {Object|null} プロジェクトオブジェクト
+     */
+    getFavoriteProjectById(id) {
+        // favoriteProjectsDataがある場合はそこから検索
+        if (this.favoriteProjectsData.length > 0) {
+            return this.favoriteProjectsData.find(p => p.id === id) || null;
+        }
+        // なければallProjectsから検索
+        return this.allProjects.find(p => p.id === id) || null;
     }
 
     /**
@@ -1104,7 +1364,9 @@ class SidePanelUI {
         this.selectedProjectData = project;
         this.selectedProjectName.textContent = `${project.name} (${project.projectKey})`;
         this.selectedProject.classList.remove('hidden');
-        this.projectSearchInput.value = '';
+        if (this.projectSearchInput) {
+            this.projectSearchInput.value = '';
+        }
         this.hideProjectDropdown();
         
         this.issueFormSection.classList.remove('hidden');
@@ -1163,7 +1425,9 @@ class SidePanelUI {
      * プロジェクトドロップダウンを非表示
      */
     hideProjectDropdown() {
-        this.projectDropdown.classList.add('hidden');
+        if (this.projectDropdown) {
+            this.projectDropdown.classList.add('hidden');
+        }
     }
 
     /**
@@ -1916,6 +2180,9 @@ class SidePanelUI {
 }
 
 // DOMが読み込まれたら初期化
-document.addEventListener('DOMContentLoaded', () => {
-    window.sidePanelUI = new SidePanelUI();
-});
+if (typeof document !== 'undefined' && !window._sidePanelInitialized) {
+    document.addEventListener('DOMContentLoaded', () => {
+        window.sidePanelUI = new SidePanelUI();
+    });
+    window._sidePanelInitialized = true;
+}
