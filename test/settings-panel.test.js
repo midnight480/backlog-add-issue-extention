@@ -12,7 +12,7 @@ describe('Settings Panel Tests', () => {
     let popupUI;
     let mockSendMessage;
 
-    beforeEach(() => {
+    beforeEach(async () => {
         // DOMを初期化
         document.documentElement.innerHTML = html;
         
@@ -23,7 +23,11 @@ describe('Settings Panel Tests', () => {
         document.head.appendChild(style);
 
         // Chrome runtime API のモック
-        mockSendMessage = jest.fn();
+        mockSendMessage = jest.fn((message, callback) => {
+            if (typeof callback === 'function') {
+                callback({ success: true });
+            }
+        });
         global.chrome = {
             ...global.chrome,
             runtime: {
@@ -45,6 +49,12 @@ describe('Settings Panel Tests', () => {
         document.dispatchEvent(event);
 
         popupUI = window.sidePanelUI;
+
+        // 非同期の初期化処理を待機
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // 初期化時の通信をクリア
+        mockSendMessage.mockClear();
     });
 
     afterEach(() => {
@@ -66,7 +76,11 @@ describe('Settings Panel Tests', () => {
             expect(popupUI.deleteApiKeyBtn).toBeTruthy();
         });
 
-        test('初期状態でAPIキー状態の読み込みが実行される', () => {
+        test('初期状態でAPIキー状態の読み込みが実行される', async () => {
+            // beforeEachでクリアされているため、再度initを呼び出して検証
+            mockSendMessage.mockClear();
+            await popupUI.init();
+
             // loadApiKeyStatus が呼ばれることを確認
             expect(mockSendMessage).toHaveBeenCalledWith(
                 { action: 'getApiKey' },
@@ -116,7 +130,7 @@ describe('Settings Panel Tests', () => {
 
             // 入力値を設定
             popupUI.apiKeyInput.value = 'test-api-key';
-            popupUI.domainInput.value = 'backlog.jp';
+            popupUI.domainInput.value = 'test.backlog.jp';
 
             // 登録ボタンをクリック
             await popupUI.handleRegisterApiKey();
@@ -126,22 +140,23 @@ describe('Settings Panel Tests', () => {
                 { 
                     action: 'saveApiKey', 
                     apiKey: 'test-api-key', 
-                    domain: 'backlog.jp' 
+                    domain: 'test.backlog.jp' 
                 },
                 expect.any(Function)
             );
         });
 
         test('APIキーが空の場合エラーメッセージが表示される', async () => {
-            const showMessageSpy = jest.spyOn(popupUI, 'showMessage');
-
             // 空の入力値
             popupUI.apiKeyInput.value = '';
-            popupUI.domainInput.value = 'backlog.jp';
+            popupUI.domainInput.value = 'test.backlog.jp';
 
             await popupUI.handleRegisterApiKey();
 
-            expect(showMessageSpy).toHaveBeenCalledWith('APIキーを入力してください', 'error');
+            const errorElement = popupUI.apiKeyInput.parentNode.querySelector('.field-error');
+            expect(errorElement.textContent).toBe('APIキーは必須です');
+            expect(errorElement.classList.contains('hidden')).toBe(false);
+
             expect(mockSendMessage).not.toHaveBeenCalledWith(
                 expect.objectContaining({ action: 'saveApiKey' }),
                 expect.any(Function)
@@ -149,15 +164,16 @@ describe('Settings Panel Tests', () => {
         });
 
         test('ドメインが未選択の場合エラーメッセージが表示される', async () => {
-            const showMessageSpy = jest.spyOn(popupUI, 'showMessage');
-
             // ドメイン未選択
             popupUI.apiKeyInput.value = 'test-api-key';
             popupUI.domainInput.value = '';
 
             await popupUI.handleRegisterApiKey();
 
-            expect(showMessageSpy).toHaveBeenCalledWith('ドメインを選択してください', 'error');
+            const errorElement = popupUI.domainInput.parentNode.querySelector('.field-error');
+            expect(errorElement.textContent).toBe('ドメインを入力してください');
+            expect(errorElement.classList.contains('hidden')).toBe(false);
+
             expect(mockSendMessage).not.toHaveBeenCalledWith(
                 expect.objectContaining({ action: 'saveApiKey' }),
                 expect.any(Function)
@@ -184,9 +200,12 @@ describe('Settings Panel Tests', () => {
                 }
             });
 
+            // 変更フォームを表示
+            popupUI.showApiKeyChangeForm();
+
             // 入力値を設定
             popupUI.newApiKeyInput.value = 'new-test-api-key';
-            popupUI.newDomainInput.value = 'backlog.com';
+            popupUI.newDomainInput.value = 'test.backlog.com';
 
             // 更新ボタンをクリック
             await popupUI.handleUpdateApiKey();
@@ -196,22 +215,25 @@ describe('Settings Panel Tests', () => {
                 { 
                     action: 'saveApiKey', 
                     apiKey: 'new-test-api-key', 
-                    domain: 'backlog.com' 
+                    domain: 'test.backlog.com' 
                 },
                 expect.any(Function)
             );
         });
 
         test('新しいAPIキーが空の場合エラーメッセージが表示される', async () => {
-            const showMessageSpy = jest.spyOn(popupUI, 'showMessage');
+            // 変更フォームを表示
+            popupUI.showApiKeyChangeForm();
 
             // 空の入力値
             popupUI.newApiKeyInput.value = '';
-            popupUI.newDomainInput.value = 'backlog.jp';
+            popupUI.newDomainInput.value = 'test.backlog.jp';
 
             await popupUI.handleUpdateApiKey();
 
-            expect(showMessageSpy).toHaveBeenCalledWith('新しいAPIキーを入力してください', 'error');
+            const errorElement = popupUI.newApiKeyInput.parentNode.querySelector('.field-error');
+            expect(errorElement.textContent).toBe('APIキーは必須です');
+            expect(errorElement.classList.contains('hidden')).toBe(false);
         });
     });
 
@@ -257,7 +279,7 @@ describe('Settings Panel Tests', () => {
                 if (message.action === 'getApiKey') {
                     callback({ 
                         success: true, 
-                        domain: 'backlog.jp',
+                        domain: 'test.backlog.jp',
                         createdAt: '2024-01-01T00:00:00.000Z'
                     });
                 }
@@ -265,7 +287,7 @@ describe('Settings Panel Tests', () => {
 
             await popupUI.loadApiKeyStatus();
 
-            expect(popupUI.registeredDomain.textContent).toBe('backlog.jp');
+            expect(popupUI.registeredDomain.textContent).toBe('test.backlog.jp');
             expect(popupUI.registeredDate.textContent).toBe('2024/1/1');
             expect(popupUI.apiKeyRegistered.classList.contains('hidden')).toBe(false);
             expect(popupUI.apiKeyNotRegistered.classList.contains('hidden')).toBe(true);

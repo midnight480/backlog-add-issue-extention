@@ -210,3 +210,8 @@ class StateManager {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = StateManager;
 }
+
+// ブラウザ環境ではwindowに登録（テスト環境でのeval対応）
+if (typeof window !== 'undefined') {
+  window.StateManager = StateManager;
+}

@@ -78,6 +78,27 @@
                     </div>
                 </div>
 
+                <!-- お気に入りプロジェクト設定 -->
+                <h2>お気に入りプロジェクト</h2>
+                <div class="favorite-projects-section">
+                    <div class="form-group">
+                        <button id="loadFavoriteProjectsBtn" class="btn btn-secondary" data-testid="load-favorite-projects-btn">プロジェクトを読み込む</button>
+                    </div>
+                    <div id="favoriteProjectsLoading" class="favorite-projects-loading hidden">
+                        <p>プロジェクトを読み込み中...</p>
+                    </div>
+                    <div id="favoriteProjectsError" class="favorite-projects-error hidden">
+                        <p>プロジェクトの読み込みに失敗しました。再度お試しください。</p>
+                    </div>
+                    <div id="favoriteProjectsList" class="favorite-project-list hidden">
+                        <!-- チェックボックス一覧がここに動的に追加される -->
+                    </div>
+                    <div class="form-group text-center" id="saveFavoriteProjectsGroup" style="display:none;">
+                        <button id="saveFavoriteProjectsBtn" class="btn btn-primary" data-testid="save-favorite-projects-btn">保存</button>
+                    </div>
+                    <div id="favoriteProjectsMessage" class="favorite-projects-message hidden"></div>
+                </div>
+
                 <!-- 説明文テンプレート設定 -->
                 <h2>説明文テンプレート</h2>
                 <div class="template-editor-section">
@@ -114,29 +135,17 @@
                     <!-- プロジェクト選択セクション -->
                     <div id="projectSelectionSection" class="project-section">
                         <div class="form-group">
-                            <label for="projectSelect" class="form-label">プロジェクト選択</label>
-                            <div class="project-select-container">
-                                <input type="text" id="projectSearchInput" class="form-input" placeholder="プロジェクトを検索..." autocomplete="off">
-                                <div id="projectDropdown" class="project-dropdown hidden">
-                                    <div id="projectList" class="project-list">
-                                        <!-- プロジェクト一覧がここに動的に追加される -->
-                                    </div>
-                                    <div id="projectLoading" class="project-loading hidden">
-                                        <p>プロジェクトを読み込み中...</p>
-                                    </div>
-                                    <div id="projectError" class="project-error hidden">
-                                        <p>プロジェクトの読み込みに失敗しました</p>
-                                    </div>
-                                    <div id="noProjectsFound" class="no-projects hidden">
-                                        <p>該当するプロジェクトが見つかりません</p>
-                                    </div>
-                                </div>
+                            <label for="favoriteProjectSelect" class="form-label">プロジェクト選択</label>
+                            <!-- お気に入り未設定時のメッセージ -->
+                            <div id="noFavoriteProjectsMessage" class="no-favorite-projects-message hidden">
+                                <p>お気に入りプロジェクトが設定されていません。</p>
+                                <p>設定画面でプロジェクトを選択してください。</p>
+                                <button id="goToSettingsForFavoritesBtn" class="btn btn-primary" data-testid="go-to-settings-for-favorites-btn">設定画面へ</button>
                             </div>
-                            <div id="selectedProject" class="selected-project hidden">
-                                <span class="selected-label">選択中:</span>
-                                <span id="selectedProjectName" class="selected-name"></span>
-                                <button id="clearProjectBtn" class="btn-clear" title="選択を解除">×</button>
-                            </div>
+                            <!-- お気に入りプロジェクトのプルダウン -->
+                            <select id="favoriteProjectSelect" class="form-input favorite-project-select hidden" data-testid="favorite-project-select">
+                                <option value="">プロジェクトを選択してください</option>
+                            </select>
                         </div>
                     </div>
 

@@ -197,7 +197,23 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
       })();
       break;
-      
+
+    case 'saveFavoriteProjects':
+      // お気に入りプロジェクトを保存
+      willRespondAsync = true;
+      handleSaveFavoriteProjects(message.projects)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'getFavoriteProjects':
+      // お気に入りプロジェクトを取得
+      willRespondAsync = true;
+      handleGetFavoriteProjects()
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
     default:
       console.log('未知のアクション:', message.action);
       sendResponse({ error: '未知のアクション' });
@@ -1337,6 +1353,11 @@ async function handleDeleteApiKey() {
       keysToDelete.push('projectsCache');
     }
     
+    // お気に入りプロジェクトデータを特定
+    if (allData.favoriteProjects) {
+      keysToDelete.push('favoriteProjects');
+    }
+    
     // ユーザ情報のキャッシュデータを特定
     if (allData.userCache) {
       keysToDelete.push('userCache');
@@ -1986,5 +2007,62 @@ function replaceTemplateVariables(template, variables) {
     console.error('テンプレート変数置換エラー:', error);
     // エラー時は元のテンプレートを返す
     return template;
+  }
+}
+
+
+/**
+ * お気に入りプロジェクト管理機能
+ */
+
+/**
+ * お気に入りプロジェクトを保存する
+ * @param {Array} projects - 保存するプロジェクトの配列 [{id, projectKey, name}]
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+async function handleSaveFavoriteProjects(projects) {
+  try {
+    console.log('お気に入りプロジェクトの保存を開始:', projects.length + '件');
+
+    // 入力バリデーション
+    if (!Array.isArray(projects)) {
+      throw new Error('プロジェクトデータが不正です');
+    }
+
+    // 必要なフィールドのみ保存（軽量化）
+    const sanitizedProjects = projects.map(p => ({
+      id: p.id,
+      projectKey: p.projectKey,
+      name: p.name
+    }));
+
+    await chrome.storage.local.set({ favoriteProjects: sanitizedProjects });
+
+    console.log('お気に入りプロジェクトを保存しました:', sanitizedProjects.length + '件');
+    return { success: true, message: 'お気に入りプロジェクトを保存しました' };
+
+  } catch (error) {
+    console.error('お気に入りプロジェクト保存エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * お気に入りプロジェクトを取得する
+ * @returns {Promise<{success: boolean, projects?: Array, message?: string}>}
+ */
+async function handleGetFavoriteProjects() {
+  try {
+    console.log('お気に入りプロジェクトの取得を開始');
+
+    const result = await chrome.storage.local.get(['favoriteProjects']);
+
+    const projects = result.favoriteProjects || [];
+    console.log('お気に入りプロジェクトを取得しました:', projects.length + '件');
+    return { success: true, projects: projects };
+
+  } catch (error) {
+    console.error('お気に入りプロジェクト取得エラー:', error);
+    return { success: false, message: error.message, projects: [] };
   }
 }
