@@ -48,6 +48,11 @@ class SidePanelUI {
         this.saveTemplateBtn = document.getElementById('saveTemplateBtn');
         this.resetTemplateBtn = document.getElementById('resetTemplateBtn');
         this.templateMessage = document.getElementById('templateMessage');
+        this.templateIssueTypeSelect = document.getElementById('templateIssueTypeSelect');
+        this.loadIssueTypeTemplateBtn = document.getElementById('loadIssueTypeTemplateBtn');
+
+        // 再読み込みボタン
+        this.reloadPageInfoBtn = document.getElementById('reloadPageInfoBtn');
 
         // Add Issue Panel の要素
         this.apiKeyRequired = document.getElementById('apiKeyRequired');
@@ -100,6 +105,10 @@ class SidePanelUI {
 
         // 課題フォーム関連の状態
         this.currentPageInfo = null;
+
+        // テンプレート管理の状態
+        this.currentTemplateIssueTypeId = '__default__'; // 現在編集中のテンプレート種別ID
+        this.issueTypeTemplates = {}; // 種別ごとのテンプレートキャッシュ
 
         // 幅調整の監視用
         this.resizeObserver = null;
@@ -529,7 +538,7 @@ class SidePanelUI {
                 for (const entry of entries) {
                     const width = entry.contentRect.width;
                     // 幅が有効な範囲内の場合のみ保存
-                    if (width >= 300 && width <= 600) {
+                    if (width >= 300 && width <= 700) {
                         this.savePanelWidth(width);
                     }
                 }
@@ -561,7 +570,7 @@ class SidePanelUI {
                 const width = result.sidePanelWidth;
                 
                 // 幅が有効な範囲内かチェック
-                if (width >= 300 && width <= 600) {
+                if (width >= 300 && width <= 700) {
                     document.body.style.width = `${width}px`;
                     console.log('パネル幅を復元しました:', width);
                 } else {
@@ -670,6 +679,20 @@ class SidePanelUI {
             this.resetTemplateToDefault();
         });
 
+        // テンプレート課題種別セレクトのイベント
+        if (this.templateIssueTypeSelect) {
+            this.templateIssueTypeSelect.addEventListener('change', (e) => {
+                this.handleTemplateIssueTypeChange(e.target.value);
+            });
+        }
+
+        // 課題テンプレートから読み込みボタン
+        if (this.loadIssueTypeTemplateBtn) {
+            this.loadIssueTypeTemplateBtn.addEventListener('click', () => {
+                this.loadIssueTypeTemplateFromApi();
+            });
+        }
+
         // Enterキーでの送信
         this.apiKeyInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
@@ -762,6 +785,13 @@ class SidePanelUI {
         this.issueTypeSelect.addEventListener('change', (e) => {
             this.handleIssueTypeChange(e.target.value);
         });
+
+        // 再読み込みボタンのイベント
+        if (this.reloadPageInfoBtn) {
+            this.reloadPageInfoBtn.addEventListener('click', async () => {
+                await this.reloadPageInfo();
+            });
+        }
 
         // 課題入力フォームのイベント
         this.issueSummary.addEventListener('input', (e) => {
@@ -1362,8 +1392,14 @@ class SidePanelUI {
      */
     async selectProject(project) {
         this.selectedProjectData = project;
-        this.selectedProjectName.textContent = `${project.name} (${project.projectKey})`;
-        this.selectedProject.classList.remove('hidden');
+        
+        // 旧UI要素が存在する場合のみ操作（後方互換性）
+        if (this.selectedProjectName) {
+            this.selectedProjectName.textContent = `${project.name} (${project.projectKey})`;
+        }
+        if (this.selectedProject) {
+            this.selectedProject.classList.remove('hidden');
+        }
         if (this.projectSearchInput) {
             this.projectSearchInput.value = '';
         }
@@ -1532,9 +1568,30 @@ class SidePanelUI {
                 console.log('課題種別を選択しました:', selectedIssueType.name);
             }
             this.hideIssueTypeError();
+            
+            // 課題種別変更時にテンプレートを再適用（説明欄が空またはテンプレートの場合）
+            if (this.currentPageInfo && this.currentPageInfo.url) {
+                const currentDescription = this.issueDescription.value.trim();
+                if (!currentDescription || this.isTemplateContent(currentDescription)) {
+                    this.updateIssueDescription();
+                }
+            }
         }
         
         this.updateCreateButtonState();
+    }
+
+    /**
+     * 説明欄の内容がテンプレートから生成されたものかどうかを判定
+     * @param {string} content - 説明欄の内容
+     * @returns {boolean}
+     */
+    isTemplateContent(content) {
+        // 「参照元:」で始まる場合はテンプレートの可能性が高い
+        if (content.startsWith('参照元:')) return true;
+        // 現在のページURLが含まれている場合
+        if (this.currentPageInfo && this.currentPageInfo.url && content.includes(this.currentPageInfo.url)) return true;
+        return false;
     }
 
     /**
@@ -1582,19 +1639,29 @@ class SidePanelUI {
                 return;
             }
             
-            // Service Workerからテンプレートを読み込む
-            const templateResponse = await this.sendMessageToBackground('loadTemplate');
+            // 現在選択中の課題種別IDを取得
+            const issueTypeId = this.issueTypeSelect ? this.issueTypeSelect.value : null;
             
-            if (!templateResponse.success) {
-                console.error('テンプレートの読み込みに失敗しました');
-                // フォールバック: デフォルトのテンプレートを使用
-                const defaultTemplate = `参照元:\n{{title}}\n{{url}}`;
-                const replacedText = this.replaceVariablesLocally(defaultTemplate);
-                this.issueDescription.value = replacedText;
-                return;
+            // 種別ごとのテンプレートを読み込む（種別が選択されている場合）
+            let template = null;
+            if (issueTypeId) {
+                const typeTemplateResponse = await this.sendMessageToBackground('loadTemplateForIssueType', {
+                    issueTypeId: issueTypeId
+                });
+                if (typeTemplateResponse.success && typeTemplateResponse.template) {
+                    template = typeTemplateResponse.template;
+                }
             }
             
-            const template = templateResponse.template;
+            // 種別テンプレートがない場合はデフォルトテンプレートを使用
+            if (!template) {
+                const templateResponse = await this.sendMessageToBackground('loadTemplate');
+                if (templateResponse.success) {
+                    template = templateResponse.template;
+                } else {
+                    template = `参照元:\n{{title}}\n{{url}}`;
+                }
+            }
             
             // テンプレート変数を置換
             const variables = {
@@ -2011,6 +2078,117 @@ class SidePanelUI {
     }
 
     /**
+     * ページ情報を再読み込みして説明欄を更新
+     * 現在のアクティブタブのURL/タイトルを取得し直す
+     */
+    async reloadPageInfo() {
+        try {
+            // ボタンにローディング状態を付与
+            this.reloadPageInfoBtn.classList.add('loading');
+            
+            // 現在のアクティブタブの情報を取得
+            const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+            if (tabs.length > 0) {
+                const tab = tabs[0];
+                this.currentPageInfo = {
+                    url: tab.url,
+                    title: tab.title
+                };
+                
+                // テンプレートを適用して説明欄を更新
+                await this.updateIssueDescription();
+                
+                // 状態を保存
+                await this.saveState();
+                
+                console.log('ページ情報を再読み込みしました:', this.currentPageInfo.url);
+            }
+        } catch (error) {
+            console.error('ページ情報再読み込みエラー:', error);
+            this.showMessage('ページ情報の再読み込みに失敗しました', 'error');
+        } finally {
+            this.reloadPageInfoBtn.classList.remove('loading');
+        }
+    }
+
+    /**
+     * テンプレート課題種別の変更処理
+     * 選択された種別のテンプレートをエディタに表示する
+     * @param {string} issueTypeId - 課題種別ID（'__default__'はデフォルト）
+     */
+    async handleTemplateIssueTypeChange(issueTypeId) {
+        this.currentTemplateIssueTypeId = issueTypeId;
+        
+        try {
+            // 種別ごとのテンプレートを読み込む
+            const response = await this.sendMessageToBackground('loadTemplateForIssueType', {
+                issueTypeId: issueTypeId
+            });
+            
+            if (response.success) {
+                this.templateEditor.value = response.template;
+                this.updateCharacterCounter(response.template);
+            } else {
+                // デフォルトテンプレートを表示
+                const defaultResponse = await this.sendMessageToBackground('loadTemplate');
+                if (defaultResponse.success) {
+                    this.templateEditor.value = defaultResponse.template;
+                    this.updateCharacterCounter(defaultResponse.template);
+                }
+            }
+        } catch (error) {
+            console.error('テンプレート読み込みエラー:', error);
+            this.showTemplateMessage('テンプレートの読み込みに失敗しました', 'error');
+        }
+    }
+
+    /**
+     * Backlog APIから課題テンプレートを読み込んでエディタに反映
+     * https://developer.nulab.com/ja/docs/backlog/api/2/get-issue-type-list/ を参照
+     */
+    async loadIssueTypeTemplateFromApi() {
+        try {
+            this.loadIssueTypeTemplateBtn.disabled = true;
+            this.loadIssueTypeTemplateBtn.textContent = '読み込み中...';
+            
+            // お気に入りプロジェクトから最初のプロジェクトを使用
+            const favResponse = await this.sendMessageToBackground('getFavoriteProjects');
+            if (!favResponse.success || favResponse.projects.length === 0) {
+                this.showTemplateMessage('お気に入りプロジェクトが設定されていません。先にプロジェクトを設定してください。', 'error');
+                return;
+            }
+            
+            // 現在選択中の種別IDを取得
+            const issueTypeId = this.currentTemplateIssueTypeId;
+            if (issueTypeId === '__default__') {
+                this.showTemplateMessage('課題種別を選択してから読み込んでください', 'error');
+                return;
+            }
+            
+            // Backlog APIから課題種別のテンプレートを取得
+            const response = await this.sendMessageToBackground('getIssueTypeTemplate', {
+                issueTypeId: issueTypeId
+            });
+            
+            if (response.success && response.template) {
+                // テンプレートに変数を追加して表示
+                const templateWithVars = response.template + '\n\n参照元:\n{{title}}\n{{url}}';
+                this.templateEditor.value = templateWithVars;
+                this.updateCharacterCounter(templateWithVars);
+                this.showTemplateMessage('課題テンプレートを読み込みました。必要に応じて編集して保存してください。', 'success');
+            } else {
+                this.showTemplateMessage('この課題種別にはテンプレートが設定されていません', 'error');
+            }
+        } catch (error) {
+            console.error('課題テンプレート読み込みエラー:', error);
+            this.showTemplateMessage('課題テンプレートの読み込みに失敗しました', 'error');
+        } finally {
+            this.loadIssueTypeTemplateBtn.disabled = false;
+            this.loadIssueTypeTemplateBtn.textContent = '課題テンプレートから読み込み';
+        }
+    }
+
+    /**
      * テンプレートエディタを初期化
      * 要件2.1: Settings画面を開いた時、Template Editorに現在のテンプレートを表示
      * @returns {Promise<void>}
@@ -2022,10 +2200,67 @@ class SidePanelUI {
             // テンプレートを読み込んでUIに表示
             await this.loadTemplateToUI();
             
+            // 課題種別セレクトにお気に入りプロジェクトの種別を読み込む
+            await this.loadIssueTypesForTemplateEditor();
+            
             console.log('テンプレートエディタの初期化が完了しました');
         } catch (error) {
             console.error('テンプレートエディタ初期化エラー:', error);
             this.showTemplateMessage('テンプレートの読み込みに失敗しました', 'error');
+        }
+    }
+
+    /**
+     * テンプレートエディタ用に課題種別を読み込む
+     * お気に入りプロジェクトの課題種別を取得してセレクトに追加
+     */
+    async loadIssueTypesForTemplateEditor() {
+        try {
+            const favResponse = await this.sendMessageToBackground('getFavoriteProjects');
+            if (!favResponse.success || favResponse.projects.length === 0) {
+                return; // お気に入りプロジェクトがない場合はスキップ
+            }
+
+            // 全お気に入りプロジェクトの課題種別を取得
+            const allIssueTypes = [];
+            const seenIds = new Set();
+
+            for (const project of favResponse.projects) {
+                try {
+                    const response = await this.sendMessageToBackground('getIssueTypes', { projectId: project.id });
+                    if (response.success) {
+                        for (const issueType of response.issueTypes) {
+                            // 同名の種別は重複を避ける
+                            const key = `${issueType.name}`;
+                            if (!seenIds.has(key)) {
+                                seenIds.add(key);
+                                allIssueTypes.push({
+                                    id: issueType.id,
+                                    name: issueType.name,
+                                    projectKey: project.projectKey
+                                });
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.warn(`プロジェクト ${project.projectKey} の課題種別取得に失敗:`, e);
+                }
+            }
+
+            // セレクトに追加
+            if (this.templateIssueTypeSelect && allIssueTypes.length > 0) {
+                // デフォルトオプション以外をクリア
+                this.templateIssueTypeSelect.innerHTML = '<option value="__default__">デフォルト（全種別共通）</option>';
+                
+                allIssueTypes.forEach(issueType => {
+                    const option = document.createElement('option');
+                    option.value = issueType.id;
+                    option.textContent = `${issueType.name}`;
+                    this.templateIssueTypeSelect.appendChild(option);
+                });
+            }
+        } catch (error) {
+            console.error('テンプレート用課題種別読み込みエラー:', error);
         }
     }
 
@@ -2073,28 +2308,29 @@ class SidePanelUI {
             console.log('テンプレートを保存します');
             
             const template = this.templateEditor.value;
+            const issueTypeId = this.currentTemplateIssueTypeId;
             
             // 保存ボタンを無効化し、ローディング状態を表示
             this.saveTemplateBtn.disabled = true;
             this.saveTemplateBtn.textContent = '保存中...';
             
-            // Service Workerに保存メッセージを送信
-            const response = await this.sendMessageToBackground('saveTemplate', { template: template });
+            // 種別ごとのテンプレートを保存
+            const response = await this.sendMessageToBackground('saveTemplateForIssueType', {
+                template: template,
+                issueTypeId: issueTypeId
+            });
             
             if (response.success) {
-                // 成功メッセージを表示し、3秒後に自動非表示
-                this.showTemplateMessage('テンプレートを保存しました', 'success');
-                console.log('テンプレートを保存しました');
+                const typeName = issueTypeId === '__default__' ? 'デフォルト' : '種別別';
+                this.showTemplateMessage(`${typeName}テンプレートを保存しました`, 'success');
+                console.log('テンプレートを保存しました (種別:', issueTypeId, ')');
             } else {
-                // エラーメッセージを表示し、入力内容を保持
                 throw new Error(response.error || 'テンプレートの保存に失敗しました');
             }
         } catch (error) {
             console.error('テンプレート保存エラー:', error);
-            // エラーメッセージを表示し、入力内容を保持
             this.showTemplateMessage('テンプレートの保存に失敗しました。もう一度お試しください。', 'error');
         } finally {
-            // 保存ボタンを再度有効化
             this.saveTemplateBtn.disabled = false;
             this.saveTemplateBtn.textContent = '保存';
         }
