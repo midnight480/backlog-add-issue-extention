@@ -1,8 +1,9 @@
 {
   "manifest_version": 3,
-  "name": "Add Issue",
+  "name": "__MSG_extName__",
   "version": "1.0.0",
-  "description": "Chrome拡張機能として、BacklogのAPIキー管理と課題追加機能を提供するシステム",
+  "description": "__MSG_extDescription__",
+  "default_locale": "en",
   "minimum_chrome_version": "114",
   "permissions": [
     "storage",

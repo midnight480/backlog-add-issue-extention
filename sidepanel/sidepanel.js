@@ -10,6 +10,20 @@ class SidePanelUI {
     }
 
     async init() {
+        // i18nの初期化（DOM操作の前に実行）
+        await i18n.init();
+        i18n.applyToPage();
+
+        // 言語設定セレクトの初期値を設定
+        this.languageSelect = document.getElementById('languageSelect');
+        if (this.languageSelect) {
+            const rawSetting = await i18n.getRawSetting();
+            this.languageSelect.value = rawSetting;
+            this.languageSelect.addEventListener('change', async (e) => {
+                await this.handleLanguageChange(e.target.value);
+            });
+        }
+
         // State Managerの初期化
         this.stateManager = new StateManager('sidePanelState', 500);
 
@@ -862,6 +876,16 @@ class SidePanelUI {
     }
 
     /**
+     * 言語設定変更時の処理
+     * @param {string} locale - 選択されたロケール ('auto', 'ja', 'en')
+     */
+    async handleLanguageChange(locale) {
+        await i18n.saveLocale(locale);
+        // ページをリロードして言語を反映
+        window.location.reload();
+    }
+
+    /**
      * Background Service Workerにメッセージを送信
      * @param {string} action - アクション名
      * @param {Object} data - 送信データ
@@ -1237,12 +1261,15 @@ class SidePanelUI {
                 return;
             }
 
+            // お気に入りプロジェクトデータを保持（getFavoriteProjectByIdで使用）
+            this.favoriteProjectsData = response.projects;
+
             // プルダウンを構築
-            this.favoriteProjectSelect.innerHTML = '<option value="">プロジェクトを選択してください</option>';
+            this.favoriteProjectSelect.innerHTML = `<option value="">${i18n.getMessage('projectSelectPlaceholder')}</option>`;
             response.projects.forEach(project => {
                 const option = document.createElement('option');
                 option.value = project.id;
-                option.textContent = `${this.escapeHtml(project.name)} (${this.escapeHtml(project.projectKey)})`;
+                option.textContent = `${project.name} (${project.projectKey})`;
                 this.favoriteProjectSelect.appendChild(option);
             });
 
@@ -1265,16 +1292,17 @@ class SidePanelUI {
 
     /**
      * IDでお気に入りプロジェクトを検索する
-     * @param {number} id - プロジェクトID
+     * @param {number|string} id - プロジェクトID
      * @returns {Object|null} プロジェクトオブジェクト
      */
     getFavoriteProjectById(id) {
+        const idStr = id.toString();
         // favoriteProjectsDataがある場合はそこから検索
         if (this.favoriteProjectsData.length > 0) {
-            return this.favoriteProjectsData.find(p => p.id === id) || null;
+            return this.favoriteProjectsData.find(p => p.id.toString() === idStr) || null;
         }
         // なければallProjectsから検索
-        return this.allProjects.find(p => p.id === id) || null;
+        return this.allProjects.find(p => p.id.toString() === idStr) || null;
     }
 
     /**
@@ -1326,44 +1354,46 @@ class SidePanelUI {
      * プロジェクトエラー表示
      */
     showProjectError() {
-        this.projectLoading.classList.add('hidden');
-        this.projectError.classList.remove('hidden');
-        this.noProjectsFound.classList.add('hidden');
-        this.projectList.innerHTML = '';
+        if (this.projectLoading) this.projectLoading.classList.add('hidden');
+        if (this.projectError) this.projectError.classList.remove('hidden');
+        if (this.noProjectsFound) this.noProjectsFound.classList.add('hidden');
+        if (this.projectList) this.projectList.innerHTML = '';
     }
 
     /**
      * プロジェクト一覧を描画
      */
     renderProjectList() {
-        this.projectLoading.classList.add('hidden');
-        this.projectError.classList.add('hidden');
+        if (this.projectLoading) this.projectLoading.classList.add('hidden');
+        if (this.projectError) this.projectError.classList.add('hidden');
         
         if (this.filteredProjects.length === 0) {
-            this.noProjectsFound.classList.remove('hidden');
-            this.projectList.innerHTML = '';
+            if (this.noProjectsFound) this.noProjectsFound.classList.remove('hidden');
+            if (this.projectList) this.projectList.innerHTML = '';
             return;
         }
 
-        this.noProjectsFound.classList.add('hidden');
-        this.projectList.innerHTML = '';
-        
-        this.filteredProjects.forEach(project => {
-            const projectItem = document.createElement('div');
-            projectItem.className = 'project-item';
-            projectItem.dataset.projectId = project.id;
+        if (this.noProjectsFound) this.noProjectsFound.classList.add('hidden');
+        if (this.projectList) {
+            this.projectList.innerHTML = '';
             
-            projectItem.innerHTML = `
-                <div class="project-name">${this.escapeHtml(project.name)}</div>
-                <div class="project-key">${this.escapeHtml(project.projectKey)}</div>
-            `;
-            
-            projectItem.addEventListener('click', () => {
-                this.selectProject(project);
+            this.filteredProjects.forEach(project => {
+                const projectItem = document.createElement('div');
+                projectItem.className = 'project-item';
+                projectItem.dataset.projectId = project.id;
+                
+                projectItem.innerHTML = `
+                    <div class="project-name">${this.escapeHtml(project.name)}</div>
+                    <div class="project-key">${this.escapeHtml(project.projectKey)}</div>
+                `;
+                
+                projectItem.addEventListener('click', () => {
+                    this.selectProject(project);
+                });
+                
+                this.projectList.appendChild(projectItem);
             });
-            
-            this.projectList.appendChild(projectItem);
-        });
+        }
     }
 
     /**
@@ -1431,9 +1461,15 @@ class SidePanelUI {
      */
     async clearSelectedProject() {
         this.selectedProjectData = null;
-        this.selectedProject.classList.add('hidden');
-        this.issueFormSection.classList.add('hidden');
-        this.projectSearchInput.focus();
+        if (this.selectedProject) {
+            this.selectedProject.classList.add('hidden');
+        }
+        if (this.issueFormSection) {
+            this.issueFormSection.classList.add('hidden');
+        }
+        if (this.projectSearchInput) {
+            this.projectSearchInput.focus();
+        }
         
         this.clearIssueTypes();
         
@@ -1452,7 +1488,7 @@ class SidePanelUI {
      * プロジェクトドロップダウンを表示
      */
     showProjectDropdown() {
-        if (this.allProjects.length > 0) {
+        if (this.projectDropdown && this.allProjects.length > 0) {
             this.projectDropdown.classList.remove('hidden');
         }
     }
@@ -1507,7 +1543,7 @@ class SidePanelUI {
      * 課題種別読み込み中表示
      */
     showIssueTypeLoading() {
-        this.issueTypeSelect.innerHTML = '<option value="">課題種別を読み込み中...</option>';
+        this.issueTypeSelect.innerHTML = `<option value="">${i18n.getMessage('issueTypePlaceholder')}...</option>`;
         this.issueTypeSelect.disabled = true;
     }
 
@@ -1523,10 +1559,10 @@ class SidePanelUI {
      * 課題種別一覧を描画
      */
     renderIssueTypes() {
-        this.issueTypeSelect.innerHTML = '<option value="">課題種別を選択してください</option>';
+        this.issueTypeSelect.innerHTML = `<option value="">${i18n.getMessage('issueTypePlaceholder')}</option>`;
         
         if (this.projectIssueTypes.length === 0) {
-            this.issueTypeSelect.innerHTML = '<option value="">利用可能な課題種別がありません</option>';
+            this.issueTypeSelect.innerHTML = `<option value="">${i18n.getMessage('issueTypePlaceholder')}</option>`;
             this.issueTypeSelect.disabled = true;
             return;
         }
@@ -2387,7 +2423,7 @@ class SidePanelUI {
      */
     updateCharacterCounter(text) {
         const length = text.length;
-        this.templateCharCounter.textContent = `${length}文字`;
+        this.templateCharCounter.textContent = i18n.getMessage('templateCharCounter', [String(length)]);
     }
 
     /**
