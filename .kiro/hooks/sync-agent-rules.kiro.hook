@@ -1,0 +1,16 @@
+{
+  "enabled": true,
+  "name": "エージェントルール同期",
+  "description": "AI-DLCエージェント共通ルールのソースファイル (.aidlc/agent-rules-source.md) が編集された際に、全エージェント向け定義ファイルを自動同期します。",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "**/.aidlc/agent-rules-source.md"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "./scripts/sync-agent-rules.sh"
+  }
+}
