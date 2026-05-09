@@ -1,5 +1,5 @@
 {
-  "name": "anybacklog",
+  "name": "backlog-add-issue-extension",
   "version": "1.0.0",
   "description": "Chrome拡張機能として、BacklogのAPIキー管理と課題追加機能を提供するシステム",
   "main": "manifest.json",
@@ -48,7 +48,7 @@
     "collectCoverageFrom": [
       "background/**/*.js",
       "content/**/*.js",
-      "popup/**/*.js",
+      "sidepanel/**/*.js",
       "!**/node_modules/**",
       "!**/test/**"
     ],

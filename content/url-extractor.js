@@ -6,7 +6,7 @@
  * 現在のタブのURLとタイトルを取得し、Background Service Workerと通信する
  */
 
-console.log('Backlog Issue Creator Content Script loaded');
+console.log('Add Issue Content Script loaded');
 
 /**
  * 現在のページの情報を取得する
