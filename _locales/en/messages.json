@@ -1,0 +1,190 @@
+{
+  "extName": {
+    "message": "Add Issue"
+  },
+  "extDescription": {
+    "message": "A Chrome extension that provides Backlog API key management and issue creation features"
+  },
+  "settingsTab": {
+    "message": "Settings"
+  },
+  "addIssueTab": {
+    "message": "Add Issue"
+  },
+  "languageSettingsTitle": {
+    "message": "Language Settings"
+  },
+  "languageLabel": {
+    "message": "Display Language"
+  },
+  "languageAuto": {
+    "message": "Auto (Follow browser settings)"
+  },
+  "languageJa": {
+    "message": "日本語"
+  },
+  "languageEn": {
+    "message": "English"
+  },
+  "languageSaved": {
+    "message": "Language setting saved. Reloading to apply."
+  },
+  "apiSettingsTitle": {
+    "message": "API Settings"
+  },
+  "apiKeyLabel": {
+    "message": "Backlog API Key"
+  },
+  "apiKeyPlaceholder": {
+    "message": "Enter your API key"
+  },
+  "domainLabel": {
+    "message": "Backlog Domain"
+  },
+  "domainPlaceholder": {
+    "message": "e.g. xxx.backlog.jp or yyy.backlog.com"
+  },
+  "domainHelp": {
+    "message": "Enter the full domain name (e.g. mycompany.backlog.jp)"
+  },
+  "registerApiKeyBtn": {
+    "message": "Register API Key"
+  },
+  "statusLabel": {
+    "message": "Status:"
+  },
+  "statusRegistered": {
+    "message": "Registered"
+  },
+  "domainStatusLabel": {
+    "message": "Domain:"
+  },
+  "registeredDateLabel": {
+    "message": "Registered:"
+  },
+  "changeBtn": {
+    "message": "Change"
+  },
+  "deleteBtn": {
+    "message": "Delete"
+  },
+  "newApiKeyLabel": {
+    "message": "New API Key"
+  },
+  "newApiKeyPlaceholder": {
+    "message": "Enter new API key"
+  },
+  "updateBtn": {
+    "message": "Update"
+  },
+  "cancelBtn": {
+    "message": "Cancel"
+  },
+  "favoriteProjectsTitle": {
+    "message": "Favorite Projects"
+  },
+  "loadFavoriteProjectsBtn": {
+    "message": "Load Projects"
+  },
+  "favoriteProjectsLoading": {
+    "message": "Loading projects..."
+  },
+  "favoriteProjectsError": {
+    "message": "Failed to load projects. Please try again."
+  },
+  "saveBtn": {
+    "message": "Save"
+  },
+  "templateTitle": {
+    "message": "Description Template"
+  },
+  "templateIssueTypeLabel": {
+    "message": "Template per Issue Type"
+  },
+  "templateIssueTypeDefault": {
+    "message": "Default (All types)"
+  },
+  "templateIssueTypeHelp": {
+    "message": "Select a type to set individual templates. Types without a template will use the default."
+  },
+  "templateLabel": {
+    "message": "Template"
+  },
+  "templatePlaceholder": {
+    "message": "Enter description template"
+  },
+  "templateCharCounter": {
+    "message": "$COUNT$ chars",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "templateVariablesHelp": {
+    "message": "Available variables: <code>{{url}}</code> (current page URL), <code>{{title}}</code> (current page title)"
+  },
+  "resetBtn": {
+    "message": "Reset"
+  },
+  "loadIssueTypeTemplateBtn": {
+    "message": "Load from<br>Issue Template"
+  },
+  "addIssueTitle": {
+    "message": "Add Issue"
+  },
+  "apiKeyRequiredMessage": {
+    "message": "Please set up your API key first to add issues."
+  },
+  "goToSettingsBtn": {
+    "message": "Go to Settings"
+  },
+  "projectSelectLabel": {
+    "message": "Select Project"
+  },
+  "noFavoriteProjectsMessage1": {
+    "message": "No favorite projects configured."
+  },
+  "noFavoriteProjectsMessage2": {
+    "message": "Please select projects in the Settings panel."
+  },
+  "projectSelectPlaceholder": {
+    "message": "Select a project"
+  },
+  "issueTypeLabel": {
+    "message": "Issue Type"
+  },
+  "issueTypeRequired": {
+    "message": "Issue type is required"
+  },
+  "issueTypePlaceholder": {
+    "message": "Select an issue type"
+  },
+  "summaryLabel": {
+    "message": "Summary"
+  },
+  "summaryPlaceholder": {
+    "message": "Enter issue summary"
+  },
+  "summaryRequired": {
+    "message": "Summary is required"
+  },
+  "descriptionLabel": {
+    "message": "Description"
+  },
+  "descriptionPlaceholder": {
+    "message": "Issue description (current page URL will be auto-inserted)"
+  },
+  "descriptionHelp": {
+    "message": "Current page URL and title will be auto-inserted"
+  },
+  "reloadPageInfoTitle": {
+    "message": "Reload current page info"
+  },
+  "createIssueBtn": {
+    "message": "Create Issue"
+  },
+  "required": {
+    "message": "*"
+  }
+}

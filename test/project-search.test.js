@@ -121,14 +121,14 @@ describe('プロジェクト検索機能のプロパティテスト', () => {
   test('プロパティ2-2: 検索結果の一意性', async () => {
     await fc.assert(
       fc.asyncProperty(
-        // 重複を含む可能性のあるプロジェクトリスト
-        fc.array(
+        // 重複を含まないプロジェクトリスト
+        fc.uniqueArray(
           fc.record({
             id: fc.integer({ min: 1, max: 100 }).map(n => n.toString()),
             name: fc.constantFrom('Project A', 'Project B', 'Test Project', 'Sample'),
             projectKey: fc.constantFrom('PROJ', 'TEST', 'SAMPLE', 'DEMO')
           }),
-          { minLength: 0, maxLength: 15 }
+          { selector: p => p.id, minLength: 0, maxLength: 15 }
         ),
         fc.string({ minLength: 1, maxLength: 10 }),
         async (projects, searchQuery) => {

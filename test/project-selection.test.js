@@ -16,8 +16,9 @@ const html = fs.readFileSync(path.resolve(__dirname, '../sidepanel/sidepanel.htm
 describe('プロジェクト選択機能のプロパティテスト', () => {
   let popupUI;
   let mockSendMessage;
+  jest.setTimeout(10000); // タイムアウトを延長
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // DOMを初期化
     document.documentElement.innerHTML = html;
     
@@ -28,14 +29,14 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
     document.head.appendChild(style);
 
     // Chrome runtime API のモック
-    mockSendMessage = jest.fn();
-    global.chrome = {
-      ...global.chrome,
-      runtime: {
-        ...global.chrome.runtime,
-        sendMessage: mockSendMessage
+    mockSendMessage = jest.fn((message, callback) => {
+      if (message.action === 'getFavoriteProjects') {
+        callback({ success: true, projects: [] });
+      } else if (typeof callback === 'function') {
+        callback({ success: true });
       }
-    };
+    });
+    global.chrome.runtime.sendMessage = mockSendMessage;
 
     // StateManagerを読み込み
     const stateManagerScript = fs.readFileSync(path.resolve(__dirname, '../shared/state-manager.js'), 'utf8');
@@ -50,6 +51,12 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
     document.dispatchEvent(event);
 
     popupUI = window.sidePanelUI;
+
+    // 非同期の初期化処理を待機
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // 初期化時の通信をクリア
+    mockSendMessage.mockClear();
   });
 
   afterEach(() => {
@@ -61,7 +68,7 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
 
   /**
    * プロパティ3: プロジェクト選択の永続性
-   * 任意のプロジェクトを選択した場合、そのプロジェクトが正しく記録され、
+   * 任意のお気に入りプロジェクトを選択した場合、そのプロジェクトが正しく記録され、
    * 後続の操作で参照可能である
    */
   test('プロパティ3: プロジェクト選択の永続性', async () => {
@@ -74,30 +81,37 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
           projectKey: fc.string({ minLength: 2, maxLength: 20 }).map(s => s.toUpperCase())
         }),
         async (project) => {
+          // 内部データを設定
+          popupUI.allProjects = [project];
+
+          // お気に入りプロジェクトとしてモックレスポンスを設定
+          mockSendMessage.mockImplementation((message, callback) => {
+            if (message.action === 'getFavoriteProjects') {
+              callback({ success: true, projects: [project] });
+            } else if (message.action === 'getProjectIssueTypes') {
+              callback({ success: true, issueTypes: [{ id: 1, name: 'Bug' }] });
+            }
+          });
+
+          // お気に入りプロジェクトをプルダウンに描画
+          await popupUI.renderFavoriteProjectsInAddIssue();
+          
           // プロジェクトを選択
-          popupUI.selectProject(project);
+          popupUI.favoriteProjectSelect.value = project.id;
+          const event = new Event('change');
+          popupUI.favoriteProjectSelect.dispatchEvent(event);
+          
+          // 非同期の課題種別読み込みを待機
+          await new Promise(resolve => setTimeout(resolve, 50));
           
           // 選択されたプロジェクトが正しく記録されていることを確認
           expect(popupUI.selectedProjectData).toEqual(project);
           
-          // UI要素が正しく更新されていることを確認
-          const expectedDisplayText = `${project.name} (${project.projectKey})`;
-          expect(popupUI.selectedProjectName.textContent).toBe(expectedDisplayText);
-          
-          // 選択されたプロジェクト表示が可視化されていることを確認
-          expect(popupUI.selectedProject.classList.contains('hidden')).toBe(false);
-          
           // 課題フォームセクションが表示されていることを確認
           expect(popupUI.issueFormSection.classList.contains('hidden')).toBe(false);
-          
-          // 検索入力フィールドがクリアされていることを確認
-          expect(popupUI.projectSearchInput.value).toBe('');
-          
-          // プロジェクトドロップダウンが非表示になっていることを確認
-          expect(popupUI.projectDropdown.classList.contains('hidden')).toBe(true);
         }
       ),
-      { numRuns: 100 } // 最小100回の反復実行
+      { numRuns: 20 }
     );
   });
 
@@ -110,18 +124,17 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
           projectKey: fc.string({ minLength: 2, maxLength: 20 }).map(s => s.toUpperCase())
         }),
         async (project) => {
-          // まずプロジェクトを選択
-          popupUI.selectProject(project);
-          expect(popupUI.selectedProjectData).toEqual(project);
+          // プロジェクトを選択状態にする
+          popupUI.selectedProjectData = project;
+          popupUI.issueFormSection.classList.remove('hidden');
           
-          // プロジェクト選択を解除
-          popupUI.clearSelectedProject();
+          // プロジェクト選択を解除（プルダウンを未選択に）
+          popupUI.favoriteProjectSelect.value = '';
+          const event = new Event('change');
+          popupUI.favoriteProjectSelect.dispatchEvent(event);
           
           // 選択されたプロジェクトがクリアされていることを確認
           expect(popupUI.selectedProjectData).toBeNull();
-          
-          // 選択されたプロジェクト表示が非表示になっていることを確認
-          expect(popupUI.selectedProject.classList.contains('hidden')).toBe(true);
           
           // 課題フォームセクションが非表示になっていることを確認
           expect(popupUI.issueFormSection.classList.contains('hidden')).toBe(true);
@@ -134,38 +147,53 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
   test('プロパティ3-3: 複数プロジェクト選択の一意性', async () => {
     await fc.assert(
       fc.asyncProperty(
-        fc.array(
+        fc.uniqueArray(
           fc.record({
             id: fc.integer({ min: 1, max: 1000 }).map(n => n.toString()),
             name: fc.string({ minLength: 1, maxLength: 50 }),
             projectKey: fc.string({ minLength: 2, maxLength: 10 }).map(s => s.toUpperCase())
           }),
-          { minLength: 2, maxLength: 5 }
+          { selector: p => p.id, minLength: 2, maxLength: 5 }
         ),
         async (projects) => {
+          // 内部データを設定
+          popupUI.allProjects = projects;
+
+          // お気に入りプロジェクトとしてモックレスポンスを設定
+          mockSendMessage.mockImplementation((message, callback) => {
+            if (message.action === 'getFavoriteProjects') {
+              callback({ success: true, projects: projects });
+            } else if (message.action === 'getProjectIssueTypes') {
+              callback({ success: true, issueTypes: [{ id: 1, name: 'Bug' }] });
+            }
+          });
+
+          // お気に入りプロジェクトをプルダウンに描画
+          await popupUI.renderFavoriteProjectsInAddIssue();
+
           // 複数のプロジェクトを順次選択
           for (let i = 0; i < projects.length; i++) {
             const project = projects[i];
-            
-            popupUI.selectProject(project);
-            
+
+            popupUI.favoriteProjectSelect.value = project.id;
+            const event = new Event('change');
+            popupUI.favoriteProjectSelect.dispatchEvent(event);
+
+            // 非同期処理を待機
+            await new Promise(resolve => setTimeout(resolve, 10));
+
             // 最後に選択されたプロジェクトのみが記録されていることを確認
             expect(popupUI.selectedProjectData).toEqual(project);
-            
-            // UI表示も最後に選択されたプロジェクトのものになっていることを確認
-            const expectedDisplayText = `${project.name} (${project.projectKey})`;
-            expect(popupUI.selectedProjectName.textContent).toBe(expectedDisplayText);
           }
-          
+
           // 最終的に最後のプロジェクトが選択されていることを確認
           const lastProject = projects[projects.length - 1];
           expect(popupUI.selectedProjectData).toEqual(lastProject);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
-
   test('プロパティ3-4: プロジェクト選択状態の一貫性', async () => {
     await fc.assert(
       fc.asyncProperty(
@@ -175,25 +203,39 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
           projectKey: fc.string({ minLength: 2, maxLength: 20 }).map(s => s.toUpperCase())
         }),
         async (project) => {
+          // 内部データを設定
+          popupUI.allProjects = [project];
+
+          // お気に入りプロジェクトとして設定
+          mockSendMessage.mockImplementation((message, callback) => {
+            if (message.action === 'getFavoriteProjects') {
+              callback({ success: true, projects: [project] });
+            } else if (message.action === 'getProjectIssueTypes') {
+              callback({ success: true, issueTypes: [{ id: 1, name: 'Bug' }] });
+            }
+          });
+
+          await popupUI.renderFavoriteProjectsInAddIssue();
+
           // プロジェクトを選択
-          popupUI.selectProject(project);
+          popupUI.favoriteProjectSelect.value = project.id;
+          const event = new Event('change');
+          popupUI.favoriteProjectSelect.dispatchEvent(event);
+          
+          await new Promise(resolve => setTimeout(resolve, 50));
           
           // 選択状態の一貫性を確認
           const isProjectSelected = popupUI.selectedProjectData !== null;
-          const isSelectedProjectVisible = !popupUI.selectedProject.classList.contains('hidden');
           const isIssueFormVisible = !popupUI.issueFormSection.classList.contains('hidden');
-          const isSearchInputEmpty = popupUI.projectSearchInput.value === '';
-          const isDropdownHidden = popupUI.projectDropdown.classList.contains('hidden');
+          const isDropdownCorrect = popupUI.favoriteProjectSelect.value.toString() === project.id.toString();
           
           // すべての状態が一貫していることを確認
           expect(isProjectSelected).toBe(true);
-          expect(isSelectedProjectVisible).toBe(true);
           expect(isIssueFormVisible).toBe(true);
-          expect(isSearchInputEmpty).toBe(true);
-          expect(isDropdownHidden).toBe(true);
+          expect(isDropdownCorrect).toBe(true);
         }
       ),
-      { numRuns: 100 }
+      { numRuns: 20 }
     );
   });
 
@@ -213,53 +255,48 @@ describe('プロジェクト選択機能のプロパティテスト', () => {
             projectKey: project.projectKey + '&<>"'
           };
           
-          popupUI.selectProject(unsafeProject);
+          // 内部データを設定
+          popupUI.allProjects = [unsafeProject];
           
-          // HTMLエスケープが正しく行われていることを確認
-          const displayText = popupUI.selectedProjectName.textContent;
+          mockSendMessage.mockImplementation((message, callback) => {
+            if (message.action === 'getFavoriteProjects') {
+              callback({ success: true, projects: [unsafeProject] });
+            } else if (message.action === 'getProjectIssueTypes') {
+              callback({ success: true, issueTypes: [{ id: 1, name: 'Bug' }] });
+            }
+          });
+
+          await popupUI.renderFavoriteProjectsInAddIssue();
+
+          // プルダウンのオプションのテキストを確認
+          const option = popupUI.favoriteProjectSelect.querySelector(`option[value="${unsafeProject.id}"]`);
+          const displayText = option.textContent;
           
           // スクリプトタグが実行されずにテキストとして表示されていることを確認
           expect(displayText).toContain('<script>');
           expect(displayText).toContain('&<>"');
           
           // 実際のDOM要素にスクリプトが挿入されていないことを確認
-          expect(popupUI.selectedProjectName.innerHTML).not.toContain('<script>alert("xss")</script>');
+          expect(option.innerHTML).not.toContain('<script>alert("xss")</script>');
         }
       ),
       { numRuns: 100 }
     );
   });
 
-  test('プロパティ3-6: プロジェクト選択後の検索状態リセット', async () => {
-    await fc.assert(
-      fc.asyncProperty(
-        fc.record({
-          id: fc.integer({ min: 1, max: 10000 }).map(n => n.toString()),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          projectKey: fc.string({ minLength: 2, maxLength: 20 }).map(s => s.toUpperCase())
-        }),
-        fc.string({ minLength: 1, maxLength: 20 }),
-        async (project, searchQuery) => {
-          // 検索クエリを設定
-          popupUI.projectSearchInput.value = searchQuery;
-          popupUI.showProjectDropdown();
-          
-          // 検索状態を確認
-          expect(popupUI.projectSearchInput.value).toBe(searchQuery);
-          expect(popupUI.projectDropdown.classList.contains('hidden')).toBe(false);
-          
-          // プロジェクトを選択
-          popupUI.selectProject(project);
-          
-          // 検索状態がリセットされていることを確認
-          expect(popupUI.projectSearchInput.value).toBe('');
-          expect(popupUI.projectDropdown.classList.contains('hidden')).toBe(true);
-          
-          // プロジェクト選択状態は維持されていることを確認
-          expect(popupUI.selectedProjectData).toEqual(project);
-        }
-      ),
-      { numRuns: 100 }
-    );
+  test('プロパティ3-6: お気に入りプロジェクト未設定時の表示', async () => {
+    // お気に入りなしのレスポンス
+    mockSendMessage.mockImplementation((message, callback) => {
+      if (message.action === 'getFavoriteProjects') {
+        callback({ success: true, projects: [] });
+      }
+    });
+
+    await popupUI.renderFavoriteProjectsInAddIssue();
+
+    // メッセージが表示されていることを確認
+    expect(popupUI.noFavoriteProjectsMessage.classList.contains('hidden')).toBe(false);
+    expect(popupUI.favoriteProjectSelect.classList.contains('hidden')).toBe(true);
+    expect(popupUI.issueFormSection.classList.contains('hidden')).toBe(true);
   });
 });

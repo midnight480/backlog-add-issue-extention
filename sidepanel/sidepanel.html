@@ -13,28 +13,42 @@
 
         <!-- ナビゲーション -->
         <div class="navigation">
-            <button id="settingsTab" class="nav-button active">Settings</button>
-            <button id="addIssueTab" class="nav-button">Add Issue</button>
+            <button id="settingsTab" class="nav-button active" data-i18n="settingsTab">Settings</button>
+            <button id="addIssueTab" class="nav-button" data-i18n="addIssueTab">Add Issue</button>
         </div>
 
         <!-- Settings Panel -->
         <div id="settingsPanel" class="panel active">
             <div class="panel-content">
-                <h2>API設定</h2>
+                <!-- 言語設定 -->
+                <h2 data-i18n="languageSettingsTitle">言語設定</h2>
+                <div class="language-settings-section">
+                    <div class="form-group">
+                        <label for="languageSelect" class="form-label" data-i18n="languageLabel">表示言語</label>
+                        <select id="languageSelect" class="form-input">
+                            <option value="auto" data-i18n="languageAuto">自動（ブラウザ設定に従う）</option>
+                            <option value="ja" data-i18n="languageJa">日本語</option>
+                            <option value="en" data-i18n="languageEn">English</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- API設定 -->
+                <h2 data-i18n="apiSettingsTitle">API設定</h2>
                 <div id="settingsContent">
                     <!-- APIキー未登録時の表示 -->
                     <div id="apiKeyNotRegistered" class="api-key-section">
                         <div class="form-group">
-                            <label for="apiKeyInput" class="form-label">BacklogのAPIキー</label>
-                            <input type="password" id="apiKeyInput" class="form-input" placeholder="APIキーを入力してください">
+                            <label for="apiKeyInput" class="form-label" data-i18n="apiKeyLabel">BacklogのAPIキー</label>
+                            <input type="password" id="apiKeyInput" class="form-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="APIキーを入力してください">
                         </div>
                         <div class="form-group">
-                            <label for="domainInput" class="form-label">Backlogドメイン</label>
-                            <input type="text" id="domainInput" class="form-input" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
-                            <div class="form-help">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
+                            <label for="domainInput" class="form-label" data-i18n="domainLabel">Backlogドメイン</label>
+                            <input type="text" id="domainInput" class="form-input" data-i18n-placeholder="domainPlaceholder" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
+                            <div class="form-help" data-i18n="domainHelp">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
                         </div>
                         <div class="form-group text-center">
-                            <button id="registerApiKeyBtn" class="btn btn-primary">APIキーを登録</button>
+                            <button id="registerApiKeyBtn" class="btn btn-primary" data-i18n="registerApiKeyBtn">APIキーを登録</button>
                         </div>
                     </div>
 
@@ -42,87 +56,87 @@
                     <div id="apiKeyRegistered" class="api-key-section hidden">
                         <div class="api-key-status">
                             <div class="status-item">
-                                <span class="status-label">状態:</span>
-                                <span class="status-value success">登録済み</span>
+                                <span class="status-label" data-i18n="statusLabel">状態:</span>
+                                <span class="status-value success" data-i18n="statusRegistered">登録済み</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">ドメイン:</span>
+                                <span class="status-label" data-i18n="domainStatusLabel">ドメイン:</span>
                                 <span id="registeredDomain" class="status-value">-</span>
                             </div>
                             <div class="status-item">
-                                <span class="status-label">登録日:</span>
+                                <span class="status-label" data-i18n="registeredDateLabel">登録日:</span>
                                 <span id="registeredDate" class="status-value">-</span>
                             </div>
                         </div>
                         <div class="form-group text-center">
-                            <button id="changeApiKeyBtn" class="btn btn-secondary mt-2">変更</button>
-                            <button id="deleteApiKeyBtn" class="btn btn-danger mt-2">削除</button>
+                            <button id="changeApiKeyBtn" class="btn btn-secondary mt-2" data-i18n="changeBtn">変更</button>
+                            <button id="deleteApiKeyBtn" class="btn btn-danger mt-2" data-i18n="deleteBtn">削除</button>
                         </div>
                     </div>
 
                     <!-- APIキー変更時の表示 -->
                     <div id="apiKeyChange" class="api-key-section hidden">
                         <div class="form-group">
-                            <label for="newApiKeyInput" class="form-label">新しいAPIキー</label>
-                            <input type="password" id="newApiKeyInput" class="form-input" placeholder="新しいAPIキーを入力してください">
+                            <label for="newApiKeyInput" class="form-label" data-i18n="newApiKeyLabel">新しいAPIキー</label>
+                            <input type="password" id="newApiKeyInput" class="form-input" data-i18n-placeholder="newApiKeyPlaceholder" placeholder="新しいAPIキーを入力してください">
                         </div>
                         <div class="form-group">
-                            <label for="newDomainInput" class="form-label">Backlogドメイン</label>
-                            <input type="text" id="newDomainInput" class="form-input" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
-                            <div class="form-help">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
+                            <label for="newDomainInput" class="form-label" data-i18n="domainLabel">Backlogドメイン</label>
+                            <input type="text" id="newDomainInput" class="form-input" data-i18n-placeholder="domainPlaceholder" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
+                            <div class="form-help" data-i18n="domainHelp">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
                         </div>
                         <div class="form-group text-center">
-                            <button id="updateApiKeyBtn" class="btn btn-primary">更新</button>
-                            <button id="cancelChangeBtn" class="btn btn-secondary">キャンセル</button>
+                            <button id="updateApiKeyBtn" class="btn btn-primary" data-i18n="updateBtn">更新</button>
+                            <button id="cancelChangeBtn" class="btn btn-secondary" data-i18n="cancelBtn">キャンセル</button>
                         </div>
                     </div>
                 </div>
 
                 <!-- お気に入りプロジェクト設定 -->
-                <h2>お気に入りプロジェクト</h2>
+                <h2 data-i18n="favoriteProjectsTitle">お気に入りプロジェクト</h2>
                 <div class="favorite-projects-section">
                     <div class="form-group">
-                        <button id="loadFavoriteProjectsBtn" class="btn btn-secondary" data-testid="load-favorite-projects-btn">プロジェクトを読み込む</button>
+                        <button id="loadFavoriteProjectsBtn" class="btn btn-secondary" data-testid="load-favorite-projects-btn" data-i18n="loadFavoriteProjectsBtn">プロジェクトを読み込む</button>
                     </div>
                     <div id="favoriteProjectsLoading" class="favorite-projects-loading hidden">
-                        <p>プロジェクトを読み込み中...</p>
+                        <p data-i18n="favoriteProjectsLoading">プロジェクトを読み込み中...</p>
                     </div>
                     <div id="favoriteProjectsError" class="favorite-projects-error hidden">
-                        <p>プロジェクトの読み込みに失敗しました。再度お試しください。</p>
+                        <p data-i18n="favoriteProjectsError">プロジェクトの読み込みに失敗しました。再度お試しください。</p>
                     </div>
                     <div id="favoriteProjectsList" class="favorite-project-list hidden">
                         <!-- チェックボックス一覧がここに動的に追加される -->
                     </div>
                     <div class="form-group text-center" id="saveFavoriteProjectsGroup" style="display:none;">
-                        <button id="saveFavoriteProjectsBtn" class="btn btn-primary" data-testid="save-favorite-projects-btn">保存</button>
+                        <button id="saveFavoriteProjectsBtn" class="btn btn-primary" data-testid="save-favorite-projects-btn" data-i18n="saveBtn">保存</button>
                     </div>
                     <div id="favoriteProjectsMessage" class="favorite-projects-message hidden"></div>
                 </div>
 
                 <!-- 説明文テンプレート設定 -->
-                <h2>説明文テンプレート</h2>
+                <h2 data-i18n="templateTitle">説明文テンプレート</h2>
                 <div class="template-editor-section">
                     <div class="form-group">
-                        <label for="templateIssueTypeSelect" class="form-label">課題種別ごとのテンプレート</label>
+                        <label for="templateIssueTypeSelect" class="form-label" data-i18n="templateIssueTypeLabel">課題種別ごとのテンプレート</label>
                         <select id="templateIssueTypeSelect" class="form-input">
-                            <option value="__default__">デフォルト（全種別共通）</option>
+                            <option value="__default__" data-i18n="templateIssueTypeDefault">デフォルト（全種別共通）</option>
                         </select>
-                        <div class="form-help">種別を選択してテンプレートを個別に設定できます。未設定の種別はデフォルトが使用されます。</div>
+                        <div class="form-help" data-i18n="templateIssueTypeHelp">種別を選択してテンプレートを個別に設定できます。未設定の種別はデフォルトが使用されます。</div>
                     </div>
                     <div class="form-group">
-                        <label for="templateEditor" class="form-label">テンプレート</label>
-                        <textarea id="templateEditor" class="form-textarea template-textarea" placeholder="説明文のテンプレートを入力してください" rows="6"></textarea>
+                        <label for="templateEditor" class="form-label" data-i18n="templateLabel">テンプレート</label>
+                        <textarea id="templateEditor" class="form-textarea template-textarea" data-i18n-placeholder="templatePlaceholder" placeholder="説明文のテンプレートを入力してください" rows="6"></textarea>
                         <div id="templateCharCounter" class="character-counter-template">0文字</div>
-                        <div class="form-help">
+                        <div class="form-help" data-i18n-html="templateVariablesHelp">
                             使用可能な変数: <code>{{url}}</code> (現在のページURL), <code>{{title}}</code> (現在のページタイトル)
                         </div>
                     </div>
                     <div class="form-group text-center">
-                        <button id="saveTemplateBtn" class="btn btn-primary">保存</button>
+                        <button id="saveTemplateBtn" class="btn btn-primary" data-i18n="saveBtn">保存</button>
                     </div>
                     <div class="form-group template-btn-row">
-                        <button id="resetTemplateBtn" class="btn btn-secondary">リセット</button>
-                        <button id="loadIssueTypeTemplateBtn" class="btn btn-secondary">課題テンプレートから<br>読み込み</button>
+                        <button id="resetTemplateBtn" class="btn btn-secondary" data-i18n="resetBtn">リセット</button>
+                        <button id="loadIssueTypeTemplateBtn" class="btn btn-secondary" data-i18n-html="loadIssueTypeTemplateBtn">課題テンプレートから<br>読み込み</button>
                     </div>
                     <div id="templateMessage" class="template-message hidden"></div>
                 </div>
@@ -132,29 +146,29 @@
         <!-- Add Issue Panel -->
         <div id="addIssuePanel" class="panel">
             <div class="panel-content">
-                <h2>課題追加</h2>
+                <h2 data-i18n="addIssueTitle">課題追加</h2>
                 <div id="addIssueContent">
                     <!-- APIキー未設定時の表示 -->
                     <div id="apiKeyRequired" class="api-key-required hidden">
                         <div class="info-message">
-                            <p>課題を追加するには、まずAPIキーを設定してください。</p>
-                            <button id="goToSettingsBtn" class="btn btn-primary">設定画面へ</button>
+                            <p data-i18n="apiKeyRequiredMessage">課題を追加するには、まずAPIキーを設定してください。</p>
+                            <button id="goToSettingsBtn" class="btn btn-primary" data-i18n="goToSettingsBtn">設定画面へ</button>
                         </div>
                     </div>
 
                     <!-- プロジェクト選択セクション -->
                     <div id="projectSelectionSection" class="project-section">
                         <div class="form-group">
-                            <label for="favoriteProjectSelect" class="form-label">プロジェクト選択</label>
+                            <label for="favoriteProjectSelect" class="form-label" data-i18n="projectSelectLabel">プロジェクト選択</label>
                             <!-- お気に入り未設定時のメッセージ -->
                             <div id="noFavoriteProjectsMessage" class="no-favorite-projects-message hidden">
-                                <p>お気に入りプロジェクトが設定されていません。</p>
-                                <p>設定画面でプロジェクトを選択してください。</p>
-                                <button id="goToSettingsForFavoritesBtn" class="btn btn-primary" data-testid="go-to-settings-for-favorites-btn">設定画面へ</button>
+                                <p data-i18n="noFavoriteProjectsMessage1">お気に入りプロジェクトが設定されていません。</p>
+                                <p data-i18n="noFavoriteProjectsMessage2">設定画面でプロジェクトを選択してください。</p>
+                                <button id="goToSettingsForFavoritesBtn" class="btn btn-primary" data-testid="go-to-settings-for-favorites-btn" data-i18n="goToSettingsBtn">設定画面へ</button>
                             </div>
                             <!-- お気に入りプロジェクトのプルダウン -->
                             <select id="favoriteProjectSelect" class="form-input favorite-project-select hidden" data-testid="favorite-project-select">
-                                <option value="">プロジェクトを選択してください</option>
+                                <option value="" data-i18n="projectSelectPlaceholder">プロジェクトを選択してください</option>
                             </select>
                         </div>
                     </div>
@@ -163,33 +177,33 @@
                     <div id="issueFormSection" class="issue-form-section hidden">
                         <!-- 課題種別選択セクション -->
                         <div class="form-group">
-                            <label for="issueTypeSelect" class="form-label">課題種別 <span class="required">*</span></label>
+                            <label for="issueTypeSelect" class="form-label"><span data-i18n="issueTypeLabel">課題種別</span> <span class="required" data-i18n="required">*</span></label>
                             <select id="issueTypeSelect" class="form-input">
-                                <option value="">課題種別を選択してください</option>
+                                <option value="" data-i18n="issueTypePlaceholder">課題種別を選択してください</option>
                             </select>
-                            <div id="issueTypeError" class="field-error hidden">課題種別は必須です</div>
+                            <div id="issueTypeError" class="field-error hidden" data-i18n="issueTypeRequired">課題種別は必須です</div>
                         </div>
 
                         <div class="form-group">
-                            <label for="issueSummary" class="form-label">件名 <span class="required">*</span></label>
+                            <label for="issueSummary" class="form-label"><span data-i18n="summaryLabel">件名</span> <span class="required" data-i18n="required">*</span></label>
                             <div class="input-container">
-                                <textarea id="issueSummary" class="form-input form-input-summary" placeholder="課題の件名を入力してください" maxlength="255" autocomplete="off" rows="1"></textarea>
+                                <textarea id="issueSummary" class="form-input form-input-summary" data-i18n-placeholder="summaryPlaceholder" placeholder="課題の件名を入力してください" maxlength="255" autocomplete="off" rows="1"></textarea>
                                 <div id="summaryCounter" class="character-counter">0/255</div>
                             </div>
-                            <div id="summaryError" class="field-error hidden">件名は必須です</div>
+                            <div id="summaryError" class="field-error hidden" data-i18n="summaryRequired">件名は必須です</div>
                         </div>
 
                         <div class="form-group form-group-description">
                             <label for="issueDescription" class="form-label">
-                                説明
-                                <button id="reloadPageInfoBtn" class="btn-reload" title="現在のページ情報を再読み込み">&#x21bb;</button>
+                                <span data-i18n="descriptionLabel">説明</span>
+                                <button id="reloadPageInfoBtn" class="btn-reload" data-i18n-title="reloadPageInfoTitle" title="現在のページ情報を再読み込み">&#x21bb;</button>
                             </label>
-                            <textarea id="issueDescription" class="form-textarea form-textarea-description" placeholder="課題の説明（現在のページのURLが自動で挿入されます）" rows="4"></textarea>
-                            <div class="form-help">現在のページのURLとタイトルが自動で挿入されます</div>
+                            <textarea id="issueDescription" class="form-textarea form-textarea-description" data-i18n-placeholder="descriptionPlaceholder" placeholder="課題の説明（現在のページのURLが自動で挿入されます）" rows="4"></textarea>
+                            <div class="form-help" data-i18n="descriptionHelp">現在のページのURLとタイトルが自動で挿入されます</div>
                         </div>
 
                         <div class="form-group">
-                            <button id="createIssueBtn" class="btn btn-primary btn-full" disabled>課題を作成</button>
+                            <button id="createIssueBtn" class="btn btn-primary btn-full" disabled data-i18n="createIssueBtn">課題を作成</button>
                         </div>
 
                         <div id="issueCreationStatus" class="creation-status hidden">
@@ -203,6 +217,7 @@
         <!-- メッセージ表示エリア -->
         <div id="messageArea" class="message-area hidden"></div>
     </div>
+    <script src="../shared/i18n.js"></script>
     <script src="../shared/state-manager.js"></script>
     <script src="sidepanel.js"></script>
 </body>

@@ -1,0 +1,190 @@
+{
+  "extName": {
+    "message": "Add Issue"
+  },
+  "extDescription": {
+    "message": "Chrome拡張機能として、BacklogのAPIキー管理と課題追加機能を提供するシステム"
+  },
+  "settingsTab": {
+    "message": "設定"
+  },
+  "addIssueTab": {
+    "message": "課題追加"
+  },
+  "languageSettingsTitle": {
+    "message": "言語設定"
+  },
+  "languageLabel": {
+    "message": "表示言語"
+  },
+  "languageAuto": {
+    "message": "自動（ブラウザ設定に従う）"
+  },
+  "languageJa": {
+    "message": "日本語"
+  },
+  "languageEn": {
+    "message": "English"
+  },
+  "languageSaved": {
+    "message": "言語設定を保存しました。リロードして反映します。"
+  },
+  "apiSettingsTitle": {
+    "message": "API設定"
+  },
+  "apiKeyLabel": {
+    "message": "BacklogのAPIキー"
+  },
+  "apiKeyPlaceholder": {
+    "message": "APIキーを入力してください"
+  },
+  "domainLabel": {
+    "message": "Backlogドメイン"
+  },
+  "domainPlaceholder": {
+    "message": "例: xxx.backlog.jp または yyy.backlog.com"
+  },
+  "domainHelp": {
+    "message": "完全なドメイン名を入力してください（例: mycompany.backlog.jp）"
+  },
+  "registerApiKeyBtn": {
+    "message": "APIキーを登録"
+  },
+  "statusLabel": {
+    "message": "状態:"
+  },
+  "statusRegistered": {
+    "message": "登録済み"
+  },
+  "domainStatusLabel": {
+    "message": "ドメイン:"
+  },
+  "registeredDateLabel": {
+    "message": "登録日:"
+  },
+  "changeBtn": {
+    "message": "変更"
+  },
+  "deleteBtn": {
+    "message": "削除"
+  },
+  "newApiKeyLabel": {
+    "message": "新しいAPIキー"
+  },
+  "newApiKeyPlaceholder": {
+    "message": "新しいAPIキーを入力してください"
+  },
+  "updateBtn": {
+    "message": "更新"
+  },
+  "cancelBtn": {
+    "message": "キャンセル"
+  },
+  "favoriteProjectsTitle": {
+    "message": "お気に入りプロジェクト"
+  },
+  "loadFavoriteProjectsBtn": {
+    "message": "プロジェクトを読み込む"
+  },
+  "favoriteProjectsLoading": {
+    "message": "プロジェクトを読み込み中..."
+  },
+  "favoriteProjectsError": {
+    "message": "プロジェクトの読み込みに失敗しました。再度お試しください。"
+  },
+  "saveBtn": {
+    "message": "保存"
+  },
+  "templateTitle": {
+    "message": "説明文テンプレート"
+  },
+  "templateIssueTypeLabel": {
+    "message": "課題種別ごとのテンプレート"
+  },
+  "templateIssueTypeDefault": {
+    "message": "デフォルト（全種別共通）"
+  },
+  "templateIssueTypeHelp": {
+    "message": "種別を選択してテンプレートを個別に設定できます。未設定の種別はデフォルトが使用されます。"
+  },
+  "templateLabel": {
+    "message": "テンプレート"
+  },
+  "templatePlaceholder": {
+    "message": "説明文のテンプレートを入力してください"
+  },
+  "templateCharCounter": {
+    "message": "$COUNT$文字",
+    "placeholders": {
+      "count": {
+        "content": "$1"
+      }
+    }
+  },
+  "templateVariablesHelp": {
+    "message": "使用可能な変数: <code>{{url}}</code> (現在のページURL), <code>{{title}}</code> (現在のページタイトル)"
+  },
+  "resetBtn": {
+    "message": "リセット"
+  },
+  "loadIssueTypeTemplateBtn": {
+    "message": "課題テンプレートから<br>読み込み"
+  },
+  "addIssueTitle": {
+    "message": "課題追加"
+  },
+  "apiKeyRequiredMessage": {
+    "message": "課題を追加するには、まずAPIキーを設定してください。"
+  },
+  "goToSettingsBtn": {
+    "message": "設定画面へ"
+  },
+  "projectSelectLabel": {
+    "message": "プロジェクト選択"
+  },
+  "noFavoriteProjectsMessage1": {
+    "message": "お気に入りプロジェクトが設定されていません。"
+  },
+  "noFavoriteProjectsMessage2": {
+    "message": "設定画面でプロジェクトを選択してください。"
+  },
+  "projectSelectPlaceholder": {
+    "message": "プロジェクトを選択してください"
+  },
+  "issueTypeLabel": {
+    "message": "課題種別"
+  },
+  "issueTypeRequired": {
+    "message": "課題種別は必須です"
+  },
+  "issueTypePlaceholder": {
+    "message": "課題種別を選択してください"
+  },
+  "summaryLabel": {
+    "message": "件名"
+  },
+  "summaryPlaceholder": {
+    "message": "課題の件名を入力してください"
+  },
+  "summaryRequired": {
+    "message": "件名は必須です"
+  },
+  "descriptionLabel": {
+    "message": "説明"
+  },
+  "descriptionPlaceholder": {
+    "message": "課題の説明（現在のページのURLが自動で挿入されます）"
+  },
+  "descriptionHelp": {
+    "message": "現在のページのURLとタイトルが自動で挿入されます"
+  },
+  "reloadPageInfoTitle": {
+    "message": "現在のページ情報を再読み込み"
+  },
+  "createIssueBtn": {
+    "message": "課題を作成"
+  },
+  "required": {
+    "message": "*"
+  }
+}

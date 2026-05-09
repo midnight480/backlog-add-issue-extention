@@ -17,7 +17,7 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
   let popupUI;
   let mockSendMessage;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // DOMを初期化
     document.documentElement.innerHTML = html;
     
@@ -27,25 +27,18 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
     style.textContent = css;
     document.head.appendChild(style);
 
-    // Chrome runtime API のモック
-    mockSendMessage = jest.fn();
+    // Chrome runtime API のモック（個別テストで上書き可能なように定義）
+    mockSendMessage = jest.fn((message, callback) => {
+      if (typeof callback === 'function') {
+        callback({ success: true });
+      }
+    });
     
-    // Chrome tabs API のモック
-    const mockTabs = {
-      query: jest.fn().mockResolvedValue([{
-        url: 'https://example.com/test',
-        title: 'Test Page'
-      }])
-    };
-
-    global.chrome = {
-      ...global.chrome,
-      runtime: {
-        ...global.chrome.runtime,
-        sendMessage: mockSendMessage
-      },
-      tabs: mockTabs
-    };
+    global.chrome.runtime.sendMessage = mockSendMessage;
+    global.chrome.tabs.query = jest.fn().mockResolvedValue([{
+      url: 'https://example.com/test',
+      title: 'Test Page'
+    }]);
 
     // StateManagerを読み込み
     const stateManagerScript = fs.readFileSync(path.resolve(__dirname, '../shared/state-manager.js'), 'utf8');
@@ -60,6 +53,12 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
     document.dispatchEvent(event);
 
     popupUI = window.sidePanelUI;
+
+    // 非同期の初期化処理を待機
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // 初期化時の通信をクリア
+    mockSendMessage.mockClear();
   });
 
   afterEach(() => {
@@ -137,6 +136,9 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
           // 件名入力フィールドに空白文字列を設定
           popupUI.issueSummary.value = whitespaceString;
           
+          // 入力処理を実行（カウンター更新のため）
+          popupUI.handleSummaryInput(whitespaceString);
+          
           // バリデーション実行
           const isValid = popupUI.validateSummary(whitespaceString);
           
@@ -162,6 +164,10 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
             projectKey: 'TEST'
           };
           popupUI.selectedProjectData = mockProject;
+          
+          // 課題種別を選択状態にする
+          popupUI.issueTypeSelect.innerHTML = '<option value="1">Bug</option>';
+          popupUI.issueTypeSelect.value = '1';
           
           // 件名入力フィールドに値を設定
           popupUI.issueSummary.value = inputString;
@@ -199,8 +205,10 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
           const expectedCounter = `${htmlString.length}/255`;
           expect(popupUI.summaryCounter.textContent).toBe(expectedCounter);
           
-          // スクリプトが実行されていないことを確認（DOM要素に直接挿入されていない）
-          expect(document.querySelector('script')).toBeNull();
+          // スクリプトが実行されていないことを確認（入力したスクリプトが挿入されていない）
+          const scripts = Array.from(document.querySelectorAll('script'));
+          const xssScript = scripts.find(s => s.textContent.includes('alert("xss")'));
+          expect(xssScript).toBeUndefined();
         }
       ),
       { numRuns: 100 }
@@ -217,6 +225,9 @@ describe('課題入力フォーム機能のプロパティテスト', () => {
           
           // 件名入力フィールドに設定
           popupUI.issueSummary.value = testString;
+          
+          // 入力処理を実行
+          popupUI.handleSummaryInput(testString);
           
           // バリデーション実行
           const isValid = popupUI.validateSummary(testString);
