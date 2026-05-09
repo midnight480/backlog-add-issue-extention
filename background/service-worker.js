@@ -214,6 +214,30 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         .catch(error => sendResponse({ success: false, error: error.message }));
       break;
 
+    case 'loadTemplateForIssueType':
+      // 種別ごとのテンプレートを読み込み
+      willRespondAsync = true;
+      loadTemplateForIssueType(message.issueTypeId)
+        .then(template => sendResponse({ success: true, template: template }))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'saveTemplateForIssueType':
+      // 種別ごとのテンプレートを保存
+      willRespondAsync = true;
+      saveTemplateForIssueType(message.template, message.issueTypeId)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'getIssueTypeTemplate':
+      // Backlog APIから課題種別のテンプレートを取得
+      willRespondAsync = true;
+      handleGetIssueTypeTemplate(message.issueTypeId)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
     default:
       console.log('未知のアクション:', message.action);
       sendResponse({ error: '未知のアクション' });
@@ -2007,6 +2031,118 @@ function replaceTemplateVariables(template, variables) {
     console.error('テンプレート変数置換エラー:', error);
     // エラー時は元のテンプレートを返す
     return template;
+  }
+}
+
+/**
+ * 種別ごとのテンプレートを読み込む
+ * @param {string} issueTypeId - 課題種別ID（'__default__'はデフォルト）
+ * @returns {Promise<string|null>} テンプレート文字列（未設定の場合はnull）
+ */
+async function loadTemplateForIssueType(issueTypeId) {
+  try {
+    console.log('種別テンプレートの読み込みを開始:', issueTypeId);
+    
+    if (issueTypeId === '__default__') {
+      return await loadTemplate();
+    }
+    
+    const result = await chrome.storage.local.get(['issueTypeTemplates']);
+    const templates = result.issueTypeTemplates || {};
+    
+    if (templates[issueTypeId]) {
+      console.log('種別テンプレートを読み込みました:', issueTypeId);
+      return templates[issueTypeId];
+    }
+    
+    // 種別テンプレートが未設定の場合はnullを返す（デフォルトにフォールバック）
+    return null;
+  } catch (error) {
+    console.error('種別テンプレート読み込みエラー:', error);
+    return null;
+  }
+}
+
+/**
+ * 種別ごとのテンプレートを保存する
+ * @param {string} template - テンプレート文字列
+ * @param {string} issueTypeId - 課題種別ID（'__default__'はデフォルト）
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+async function saveTemplateForIssueType(template, issueTypeId) {
+  try {
+    console.log('種別テンプレートの保存を開始:', issueTypeId);
+    
+    if (issueTypeId === '__default__') {
+      // デフォルトテンプレートとして保存
+      return await saveTemplate(template);
+    }
+    
+    // 種別ごとのテンプレートを保存
+    const result = await chrome.storage.local.get(['issueTypeTemplates']);
+    const templates = result.issueTypeTemplates || {};
+    
+    templates[issueTypeId] = template;
+    
+    await chrome.storage.local.set({ 
+      issueTypeTemplates: templates,
+      issueTypeTemplatesUpdatedAt: Date.now()
+    });
+    
+    console.log('種別テンプレートを保存しました:', issueTypeId);
+    return { success: true, message: '種別テンプレートを保存しました' };
+    
+  } catch (error) {
+    console.error('種別テンプレート保存エラー:', error);
+    return { success: false, message: '種別テンプレートの保存に失敗しました' };
+  }
+}
+
+/**
+ * Backlog APIから課題種別に紐づくテンプレートを取得する
+ * 参照: https://developer.nulab.com/ja/docs/backlog/api/2/get-issue-type-list/
+ * 注: Backlog APIには課題種別ごとのテンプレート取得APIはないため、
+ * プロジェクトのカスタムフィールドやWikiなどから取得する代わりに
+ * 課題種別の情報（templateDescription）を返す
+ * @param {string} issueTypeId - 課題種別ID
+ * @returns {Promise<{success: boolean, template?: string}>}
+ */
+async function handleGetIssueTypeTemplate(issueTypeId) {
+  try {
+    const apiKeyResult = await handleGetApiKey();
+    if (!apiKeyResult.success) {
+      return { success: false, message: 'APIキーが設定されていません' };
+    }
+    
+    const { apiKey, domain } = apiKeyResult;
+    const baseUrl = buildBacklogApiUrl(domain);
+    
+    // お気に入りプロジェクトを取得して、該当する課題種別を探す
+    const favResult = await handleGetFavoriteProjects();
+    if (!favResult.success || favResult.projects.length === 0) {
+      return { success: false, message: 'お気に入りプロジェクトが設定されていません' };
+    }
+    
+    // 各プロジェクトの課題種別を確認
+    for (const project of favResult.projects) {
+      try {
+        const response = await fetch(`${baseUrl}/projects/${project.id}/issueTypes?apiKey=${apiKey}`);
+        if (response.ok) {
+          const issueTypes = await response.json();
+          const matchedType = issueTypes.find(t => t.id.toString() === issueTypeId.toString());
+          if (matchedType && matchedType.templateDescription) {
+            return { success: true, template: matchedType.templateDescription };
+          }
+        }
+      } catch (e) {
+        console.warn(`プロジェクト ${project.projectKey} の課題種別取得に失敗:`, e);
+      }
+    }
+    
+    return { success: false, message: 'テンプレートが見つかりません' };
+  } catch (error) {
+    console.error('課題種別テンプレート取得エラー:', error);
+    return { success: false, message: error.message };
   }
 }
 

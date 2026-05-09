@@ -4,9 +4,9 @@
 }
 
 body {
-    width: 350px; /* デフォルト幅 */
+    width: 460px; /* デフォルト幅（3cm≒113px広げた） */
     min-width: 300px;
-    max-width: 450px;
+    max-width: 560px;
     min-height: 100vh;
     margin: 0;
     padding: 0;
@@ -747,3 +747,74 @@ code {
 .no-favorite-projects-message p:last-of-type {
     margin-bottom: 12px;
 }
+
+/* 再読み込みボタン */
+.btn-reload {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    margin-left: 8px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    color: #495057;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    vertical-align: middle;
+    line-height: 1;
+}
+
+.btn-reload:hover {
+    background-color: #e9ecef;
+    border-color: #339900;
+    color: #339900;
+}
+
+.btn-reload:active {
+    transform: rotate(180deg);
+}
+
+.btn-reload.loading {
+    animation: spin 0.8s linear infinite;
+    pointer-events: none;
+    opacity: 0.6;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* 説明欄の動的高さ */
+.form-group-description {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+.form-textarea-description {
+    min-height: 120px;
+    height: calc(100vh - 480px);
+    max-height: 500px;
+    resize: vertical;
+}
+
+/* テンプレート課題種別セレクト */
+#templateIssueTypeSelect {
+    margin-bottom: 8px;
+}
+
+/* テンプレートボタン横並び */
+.template-btn-row {
+    display: flex;
+    gap: 8px;
+}
+
+.template-btn-row .btn {
+    flex: 1;
+}
+
