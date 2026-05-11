@@ -92,6 +92,12 @@
   "favoriteProjectsError": {
     "message": "プロジェクトの読み込みに失敗しました。再度お試しください。"
   },
+  "favoriteProjectsSearchPlaceholder": {
+    "message": "プロジェクト名またはキーで検索"
+  },
+  "favoriteProjectsSearchNoMatch": {
+    "message": "該当するプロジェクトがありません"
+  },
   "saveBtn": {
     "message": "保存"
   },

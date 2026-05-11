@@ -35,5 +35,5 @@
 - [ ] NFR Requirements（スキップ）
 - [ ] NFR Design（スキップ）
 - [ ] Infrastructure Design（スキップ）
-- [x] Code Generation
-- [ ] Build and Test
+- [x] Code Generation（お気に入り検索+テンプレート不具合修正を追加実装）
+- [x] Build and Test（全47スイート・483件合格）

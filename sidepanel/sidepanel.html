@@ -104,8 +104,12 @@
                     <div id="favoriteProjectsError" class="favorite-projects-error hidden">
                         <p data-i18n="favoriteProjectsError">プロジェクトの読み込みに失敗しました。再度お試しください。</p>
                     </div>
+                    <input type="search" id="favoriteProjectsSearch" class="favorite-projects-search hidden" data-testid="favorite-projects-search" data-i18n-placeholder="favoriteProjectsSearchPlaceholder" placeholder="プロジェクト名またはキーで検索">
                     <div id="favoriteProjectsList" class="favorite-project-list hidden">
                         <!-- チェックボックス一覧がここに動的に追加される -->
+                    </div>
+                    <div id="favoriteProjectsNoMatch" class="favorite-projects-no-match hidden">
+                        <p data-i18n="favoriteProjectsSearchNoMatch">該当するプロジェクトがありません</p>
                     </div>
                     <div class="form-group text-center" id="saveFavoriteProjectsGroup" style="display:none;">
                         <button id="saveFavoriteProjectsBtn" class="btn btn-primary" data-testid="save-favorite-projects-btn" data-i18n="saveBtn">保存</button>
