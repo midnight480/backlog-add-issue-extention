@@ -635,6 +635,39 @@ code {
     margin-bottom: 16px;
 }
 
+/* お気に入りプロジェクト検索入力欄 */
+.favorite-projects-search {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    font-size: 14px;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+}
+
+.favorite-projects-search:focus {
+    outline: none;
+    border-color: #339900;
+    box-shadow: 0 0 0 2px rgba(51, 153, 0, 0.25);
+}
+
+/* 検索結果0件時のメッセージ */
+.favorite-projects-no-match {
+    padding: 12px;
+    text-align: center;
+    color: #6c757d;
+    font-size: 13px;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.favorite-projects-no-match p {
+    margin: 0;
+}
+
 .favorite-project-list {
     max-height: 200px;
     overflow-y: auto;

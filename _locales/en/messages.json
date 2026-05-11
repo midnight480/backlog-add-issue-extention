@@ -92,6 +92,12 @@
   "favoriteProjectsError": {
     "message": "Failed to load projects. Please try again."
   },
+  "favoriteProjectsSearchPlaceholder": {
+    "message": "Search by project name or key"
+  },
+  "favoriteProjectsSearchNoMatch": {
+    "message": "No matching projects found"
+  },
   "saveBtn": {
     "message": "Save"
   },
