@@ -2130,9 +2130,15 @@ class SidePanelUI {
             }
 
             if (response.success) {
-                const successMessage = `課題「${response.issue.issueKey}」が${this.selectedProjectData.name}プロジェクトに正常に作成されました`;
+                // 課題URLを構築
+                const issueKey = response.issue.issueKey;
+                const space = this.spaces.find(s => s.id === this.selectedSpaceId);
+                const domain = space ? space.domain : '';
+                const issueUrl = domain ? `https://${domain}/view/${issueKey}` : '';
+                
+                const successMessage = `課題「${issueKey}」が${this.selectedProjectData.name}プロジェクトに正常に作成されました`;
                 this.showMessage(successMessage, 'success');
-                this.showCreationStatus(`課題が作成されました: ${response.issue.issueKey}`, 'success');
+                this.showCreationStatusWithCopy(issueKey, issueUrl);
                 
                 // 状態をクリア
                 await this.stateManager.clearState();
@@ -2163,6 +2169,43 @@ class SidePanelUI {
         statusMessage.textContent = message;
         
         this.issueCreationStatus.className = `creation-status ${type}`;
+        this.issueCreationStatus.classList.remove('hidden');
+    }
+
+    /**
+     * 課題作成成功時にコピーボタン付きステータスを表示
+     * @param {string} issueKey - 課題キー
+     * @param {string} issueUrl - 課題URL
+     */
+    showCreationStatusWithCopy(issueKey, issueUrl) {
+        const statusMessage = this.issueCreationStatus.querySelector('.status-message');
+        
+        // コピーボタン付きのHTMLを構築
+        const markdownLink = issueUrl ? `[${issueKey}](${issueUrl})` : issueKey;
+        
+        statusMessage.innerHTML = `
+            <span>課題が作成されました: </span>
+            <a href="${this.escapeHtml(issueUrl)}" target="_blank" class="issue-link">${this.escapeHtml(issueKey)}</a>
+            <button class="btn-copy-issue" title="課題リンクをコピー">&#x1F4CB;</button>
+        `;
+        
+        // コピーボタンのイベント
+        const copyBtn = statusMessage.querySelector('.btn-copy-issue');
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(markdownLink);
+                copyBtn.textContent = '✓';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '📋';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (error) {
+                console.error('コピーに失敗:', error);
+            }
+        });
+        
+        this.issueCreationStatus.className = 'creation-status success';
         this.issueCreationStatus.classList.remove('hidden');
     }
 

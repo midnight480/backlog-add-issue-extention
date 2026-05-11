@@ -981,3 +981,42 @@ code {
     color: #339900;
     font-weight: 600;
 }
+
+/* 課題作成成功時のリンクとコピーボタン */
+.issue-link {
+    color: #339900;
+    font-weight: 600;
+    text-decoration: underline;
+}
+
+.issue-link:hover {
+    color: #267300;
+}
+
+.btn-copy-issue {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    margin-left: 6px;
+    padding: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    vertical-align: middle;
+    transition: all 0.2s ease;
+}
+
+.btn-copy-issue:hover {
+    background-color: #e9ecef;
+    border-color: #adb5bd;
+}
+
+.btn-copy-issue.copied {
+    background-color: #d4edda;
+    border-color: #339900;
+    color: #339900;
+}
