@@ -1916,8 +1916,23 @@ class SidePanelUI {
      */
     async updateIssueDescription() {
         try {
+            // ページ情報がない場合は取得を試みる
             if (!this.currentPageInfo || !this.currentPageInfo.url) {
-                console.warn('ページ情報が取得できていません');
+                await this.loadCurrentPageInfo();
+            }
+            
+            // それでも取得できない場合は空のテンプレートを適用
+            if (!this.currentPageInfo || !this.currentPageInfo.url) {
+                console.log('ページ情報が取得できないため、テンプレートのみ適用します');
+                // 変数なしでテンプレートを適用
+                const templateResponse = await this.sendMessageToBackground('loadTemplate');
+                if (templateResponse.success && templateResponse.template) {
+                    // 変数を空文字で置換
+                    let text = templateResponse.template;
+                    text = text.replace(/\{\{url\}\}/g, '');
+                    text = text.replace(/\{\{title\}\}/g, '');
+                    this.issueDescription.value = text.trim();
+                }
                 return;
             }
             
@@ -2430,8 +2445,8 @@ class SidePanelUI {
             if (tabs.length > 0) {
                 const tab = tabs[0];
                 this.currentPageInfo = {
-                    url: tab.url,
-                    title: tab.title
+                    url: tab.url || '',
+                    title: tab.title || ''
                 };
                 
                 // テンプレートを適用して説明欄を更新
@@ -2440,7 +2455,7 @@ class SidePanelUI {
                 // 状態を保存
                 await this.saveState();
                 
-                console.log('ページ情報を再読み込みしました:', this.currentPageInfo.url);
+                console.log('ページ情報を再読み込みしました:', this.currentPageInfo.url || '(URL取得不可)');
             }
         } catch (error) {
             console.error('ページ情報再読み込みエラー:', error);
