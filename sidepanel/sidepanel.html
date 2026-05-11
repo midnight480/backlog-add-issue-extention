@@ -36,8 +36,40 @@
                 <!-- API設定 -->
                 <h2 data-i18n="apiSettingsTitle">API設定</h2>
                 <div id="settingsContent">
+                    <!-- スペース管理セクション -->
+                    <div class="space-management-section">
+                        <div id="spaceList" class="space-list">
+                            <!-- 登録済みスペースがここに動的に追加される -->
+                        </div>
+                        <div class="form-group">
+                            <button id="addSpaceBtn" class="btn btn-secondary" data-i18n="addSpaceBtn">スペースを追加</button>
+                        </div>
+                    </div>
+
+                    <!-- スペース追加フォーム -->
+                    <div id="spaceAddForm" class="space-add-form hidden">
+                        <div class="form-group">
+                            <label for="spaceNameInput" class="form-label" data-i18n="spaceNameLabel">スペース名</label>
+                            <input type="text" id="spaceNameInput" class="form-input" data-i18n-placeholder="spaceNamePlaceholder" placeholder="例: 会社名">
+                        </div>
+                        <div class="form-group">
+                            <label for="spaceDomainInput" class="form-label" data-i18n="domainLabel">Backlogドメイン</label>
+                            <input type="text" id="spaceDomainInput" class="form-input" data-i18n-placeholder="domainPlaceholder" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
+                            <div class="form-help" data-i18n="domainHelp">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
+                        </div>
+                        <div class="form-group">
+                            <label for="spaceApiKeyInput" class="form-label" data-i18n="apiKeyLabel">BacklogのAPIキー</label>
+                            <input type="password" id="spaceApiKeyInput" class="form-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="APIキーを入力してください">
+                        </div>
+                        <div class="form-group text-center">
+                            <button id="saveSpaceBtn" class="btn btn-primary" data-i18n="registerApiKeyBtn">登録</button>
+                            <button id="cancelSpaceBtn" class="btn btn-secondary" data-i18n="cancelBtn">キャンセル</button>
+                        </div>
+                    </div>
+
+                    <!-- 旧API設定（後方互換性のため非表示で保持） -->
                     <!-- APIキー未登録時の表示 -->
-                    <div id="apiKeyNotRegistered" class="api-key-section">
+                    <div id="apiKeyNotRegistered" class="api-key-section hidden">
                         <div class="form-group">
                             <label for="apiKeyInput" class="form-label" data-i18n="apiKeyLabel">BacklogのAPIキー</label>
                             <input type="password" id="apiKeyInput" class="form-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="APIキーを入力してください">
@@ -162,7 +194,20 @@
 
                     <!-- プロジェクト選択セクション -->
                     <div id="projectSelectionSection" class="project-section">
+                        <!-- スペース選択 -->
                         <div class="form-group">
+                            <label for="spaceSelect" class="form-label" data-i18n="spaceSelectLabel">スペース選択</label>
+                            <select id="spaceSelect" class="form-input" data-testid="space-select">
+                                <option value="" data-i18n="spaceSelectPlaceholder">スペースを選択してください</option>
+                            </select>
+                            <div id="noSpacesMessage" class="no-spaces-message hidden">
+                                <p data-i18n="noSpacesMessage">スペースが登録されていません。設定画面でスペースを追加してください。</p>
+                                <button id="goToSettingsForSpacesBtn" class="btn btn-primary" data-i18n="goToSettingsBtn">設定画面へ</button>
+                            </div>
+                        </div>
+
+                        <!-- プロジェクト選択 -->
+                        <div id="projectSelectGroup" class="form-group hidden">
                             <label for="favoriteProjectSelect" class="form-label" data-i18n="projectSelectLabel">プロジェクト選択</label>
                             <!-- お気に入り未設定時のメッセージ -->
                             <div id="noFavoriteProjectsMessage" class="no-favorite-projects-message hidden">

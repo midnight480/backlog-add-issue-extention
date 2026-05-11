@@ -192,5 +192,32 @@
   },
   "required": {
     "message": "*"
+  },
+  "addSpaceBtn": {
+    "message": "Add Space"
+  },
+  "spaceNameLabel": {
+    "message": "Space Name"
+  },
+  "spaceNamePlaceholder": {
+    "message": "e.g. Company Name"
+  },
+  "spaceSelectLabel": {
+    "message": "Select Space"
+  },
+  "spaceSelectPlaceholder": {
+    "message": "Select a space"
+  },
+  "noSpacesMessage": {
+    "message": "No spaces registered. Please add a space in Settings."
+  },
+  "spaceRegistered": {
+    "message": "Space registered successfully"
+  },
+  "spaceDeleted": {
+    "message": "Space deleted successfully"
+  },
+  "spaceDeleteConfirm": {
+    "message": "Delete this space? Associated favorite projects will also be removed."
   }
 }

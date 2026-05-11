@@ -199,17 +199,65 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
 
     case 'saveFavoriteProjects':
-      // お気に入りプロジェクトを保存
+      // お気に入りプロジェクトを保存（スペースID付き）
       willRespondAsync = true;
-      handleSaveFavoriteProjects(message.projects)
+      handleSaveFavoriteProjects(message.projects, message.spaceId)
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: error.message }));
       break;
 
     case 'getFavoriteProjects':
-      // お気に入りプロジェクトを取得
+      // お気に入りプロジェクトを取得（スペースID付き）
       willRespondAsync = true;
-      handleGetFavoriteProjects()
+      handleGetFavoriteProjects(message.spaceId)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'getSpaces':
+      // 登録済みスペース一覧を取得
+      willRespondAsync = true;
+      handleGetSpaces()
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'saveSpace':
+      // スペースを登録
+      willRespondAsync = true;
+      handleSaveSpace(message.space)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'deleteSpace':
+      // スペースを削除
+      willRespondAsync = true;
+      handleDeleteSpace(message.spaceId)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'getProjectsForSpace':
+      // 指定スペースのプロジェクト一覧を取得
+      willRespondAsync = true;
+      handleGetProjectsForSpace(message.spaceId)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'getIssueTypesForSpace':
+      // 指定スペースのプロジェクトの課題種別を取得
+      willRespondAsync = true;
+      handleGetIssueTypesForSpace(message.spaceId, message.projectId)
+        .then(result => sendResponse(result))
+        .catch(error => sendResponse({ success: false, error: error.message }));
+      break;
+
+    case 'createIssueForSpace':
+      // 指定スペースで課題を作成
+      willRespondAsync = true;
+      handleCreateIssueForSpace(message.spaceId, message.projectId, message.summary, message.description, message.issueTypeId)
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: error.message }));
       break;
@@ -2152,13 +2200,14 @@ async function handleGetIssueTypeTemplate(issueTypeId) {
  */
 
 /**
- * お気に入りプロジェクトを保存する
+ * お気に入りプロジェクトを保存する（スペースID対応）
  * @param {Array} projects - 保存するプロジェクトの配列 [{id, projectKey, name}]
+ * @param {string} spaceId - スペースID（省略時はデフォルトスペース）
  * @returns {Promise<{success: boolean, message?: string}>}
  */
-async function handleSaveFavoriteProjects(projects) {
+async function handleSaveFavoriteProjects(projects, spaceId) {
   try {
-    console.log('お気に入りプロジェクトの保存を開始:', projects.length + '件');
+    console.log('お気に入りプロジェクトの保存を開始:', projects.length + '件', 'スペース:', spaceId);
 
     // 入力バリデーション
     if (!Array.isArray(projects)) {
@@ -2172,7 +2221,16 @@ async function handleSaveFavoriteProjects(projects) {
       name: p.name
     }));
 
-    await chrome.storage.local.set({ favoriteProjects: sanitizedProjects });
+    if (spaceId) {
+      // スペースIDが指定されている場合はスペースごとに保存
+      const result = await chrome.storage.local.get(['spaceFavoriteProjects']);
+      const spaceFavorites = result.spaceFavoriteProjects || {};
+      spaceFavorites[spaceId] = sanitizedProjects;
+      await chrome.storage.local.set({ spaceFavoriteProjects: spaceFavorites });
+    } else {
+      // 後方互換性: スペースIDなしの場合は従来通り保存
+      await chrome.storage.local.set({ favoriteProjects: sanitizedProjects });
+    }
 
     console.log('お気に入りプロジェクトを保存しました:', sanitizedProjects.length + '件');
     return { success: true, message: 'お気に入りプロジェクトを保存しました' };
@@ -2184,21 +2242,360 @@ async function handleSaveFavoriteProjects(projects) {
 }
 
 /**
- * お気に入りプロジェクトを取得する
+ * お気に入りプロジェクトを取得する（スペースID対応）
+ * @param {string} spaceId - スペースID（省略時はデフォルトスペース）
  * @returns {Promise<{success: boolean, projects?: Array, message?: string}>}
  */
-async function handleGetFavoriteProjects() {
+async function handleGetFavoriteProjects(spaceId) {
   try {
-    console.log('お気に入りプロジェクトの取得を開始');
+    console.log('お気に入りプロジェクトの取得を開始', 'スペース:', spaceId);
 
-    const result = await chrome.storage.local.get(['favoriteProjects']);
-
-    const projects = result.favoriteProjects || [];
-    console.log('お気に入りプロジェクトを取得しました:', projects.length + '件');
-    return { success: true, projects: projects };
+    if (spaceId) {
+      // スペースIDが指定されている場合はスペースごとに取得
+      const result = await chrome.storage.local.get(['spaceFavoriteProjects']);
+      const spaceFavorites = result.spaceFavoriteProjects || {};
+      const projects = spaceFavorites[spaceId] || [];
+      console.log('お気に入りプロジェクトを取得しました:', projects.length + '件');
+      return { success: true, projects: projects };
+    } else {
+      // 後方互換性: スペースIDなしの場合は従来通り取得
+      const result = await chrome.storage.local.get(['favoriteProjects']);
+      const projects = result.favoriteProjects || [];
+      console.log('お気に入りプロジェクトを取得しました:', projects.length + '件');
+      return { success: true, projects: projects };
+    }
 
   } catch (error) {
     console.error('お気に入りプロジェクト取得エラー:', error);
     return { success: false, message: error.message, projects: [] };
   }
+}
+
+/**
+ * スペース管理機能
+ */
+
+/**
+ * 登録済みスペース一覧を取得する
+ * @returns {Promise<{success: boolean, spaces?: Array, message?: string}>}
+ */
+async function handleGetSpaces() {
+  try {
+    console.log('スペース一覧の取得を開始');
+    const result = await chrome.storage.local.get(['spaces']);
+    
+    // マイグレーション: 旧形式のapiKeyDataが存在する場合はスペースに変換
+    if (!result.spaces || result.spaces.length === 0) {
+      const legacyResult = await chrome.storage.local.get(['apiKeyData']);
+      if (legacyResult.apiKeyData) {
+        const { domain, createdAt } = legacyResult.apiKeyData;
+        const migratedSpace = {
+          id: generateSpaceId(),
+          name: domain.split('.')[0],
+          domain: domain,
+          createdAt: createdAt || new Date().toISOString()
+        };
+        await chrome.storage.local.set({ spaces: [migratedSpace] });
+        console.log('旧形式のAPIキーデータをスペースにマイグレーションしました:', migratedSpace.name);
+        return { success: true, spaces: [migratedSpace] };
+      }
+    }
+    
+    const spaces = result.spaces || [];
+    console.log('スペース一覧を取得しました:', spaces.length + '件');
+    return { success: true, spaces: spaces };
+  } catch (error) {
+    console.error('スペース一覧取得エラー:', error);
+    return { success: false, message: error.message, spaces: [] };
+  }
+}
+
+/**
+ * スペースを登録する
+ * @param {Object} space - スペース情報 {name, domain, apiKey}
+ * @returns {Promise<{success: boolean, space?: Object, message?: string}>}
+ */
+async function handleSaveSpace(space) {
+  try {
+    console.log('スペースの登録を開始:', space.name);
+    
+    if (!space.domain || !space.apiKey) {
+      throw new Error('ドメインとAPIキーは必須です');
+    }
+    
+    // APIキーの暗号化
+    const encryptedKey = btoa(space.apiKey + ':' + Date.now());
+    
+    const newSpace = {
+      id: space.id || generateSpaceId(),
+      name: space.name || space.domain.split('.')[0],
+      domain: space.domain,
+      encryptedKey: encryptedKey,
+      createdAt: space.createdAt || new Date().toISOString()
+    };
+    
+    // 既存スペース一覧を取得
+    const result = await chrome.storage.local.get(['spaces']);
+    const spaces = result.spaces || [];
+    
+    // 同じIDのスペースがあれば更新、なければ追加
+    const existingIndex = spaces.findIndex(s => s.id === newSpace.id);
+    if (existingIndex >= 0) {
+      spaces[existingIndex] = newSpace;
+    } else {
+      spaces.push(newSpace);
+    }
+    
+    await chrome.storage.local.set({ spaces: spaces });
+    
+    // 後方互換性: 最初のスペースの場合はapiKeyDataも更新
+    if (spaces.length === 1) {
+      const apiKeyData = {
+        encryptedKey: encryptedKey,
+        domain: space.domain,
+        createdAt: newSpace.createdAt
+      };
+      await chrome.storage.local.set({ apiKeyData: apiKeyData });
+    }
+    
+    console.log('スペースを登録しました:', newSpace.name);
+    return { success: true, space: { id: newSpace.id, name: newSpace.name, domain: newSpace.domain, createdAt: newSpace.createdAt } };
+  } catch (error) {
+    console.error('スペース登録エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * スペースを削除する
+ * @param {string} spaceId - 削除するスペースのID
+ * @returns {Promise<{success: boolean, message?: string}>}
+ */
+async function handleDeleteSpace(spaceId) {
+  try {
+    console.log('スペースの削除を開始:', spaceId);
+    
+    const result = await chrome.storage.local.get(['spaces', 'spaceFavoriteProjects']);
+    const spaces = result.spaces || [];
+    const spaceFavorites = result.spaceFavoriteProjects || {};
+    
+    // スペースを削除
+    const filteredSpaces = spaces.filter(s => s.id !== spaceId);
+    
+    // お気に入りプロジェクトも削除
+    delete spaceFavorites[spaceId];
+    
+    await chrome.storage.local.set({ 
+      spaces: filteredSpaces,
+      spaceFavoriteProjects: spaceFavorites
+    });
+    
+    console.log('スペースを削除しました:', spaceId);
+    return { success: true, message: 'スペースを削除しました' };
+  } catch (error) {
+    console.error('スペース削除エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * 指定スペースのAPIキーとドメインを取得する
+ * @param {string} spaceId - スペースID
+ * @returns {Promise<{success: boolean, apiKey?: string, domain?: string}>}
+ */
+async function getSpaceCredentials(spaceId) {
+  try {
+    const result = await chrome.storage.local.get(['spaces']);
+    const spaces = result.spaces || [];
+    const space = spaces.find(s => s.id === spaceId);
+    
+    if (!space) {
+      return { success: false, message: 'スペースが見つかりません' };
+    }
+    
+    // APIキーの復号化
+    const decryptedData = atob(space.encryptedKey);
+    const apiKey = decryptedData.split(':')[0];
+    
+    return { success: true, apiKey: apiKey, domain: space.domain };
+  } catch (error) {
+    console.error('スペース認証情報取得エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * 指定スペースのプロジェクト一覧を取得する
+ * @param {string} spaceId - スペースID
+ * @returns {Promise<{success: boolean, projects?: Array, message?: string}>}
+ */
+async function handleGetProjectsForSpace(spaceId) {
+  try {
+    console.log('スペースのプロジェクト一覧取得:', spaceId);
+    
+    const credentials = await getSpaceCredentials(spaceId);
+    if (!credentials.success) {
+      return { success: false, message: credentials.message };
+    }
+    
+    const { apiKey, domain } = credentials;
+    const baseUrl = buildBacklogApiUrl(domain);
+    
+    const response = await fetch(`${baseUrl}/projects?apiKey=${apiKey}`);
+    
+    if (!response.ok) {
+      let errorMessage = 'プロジェクト一覧の取得に失敗しました';
+      if (response.status === 401) {
+        errorMessage = 'APIキーが無効です。設定を確認してください';
+      } else if (response.status === 403) {
+        errorMessage = 'プロジェクト一覧を取得する権限がありません';
+      }
+      throw new Error(errorMessage);
+    }
+    
+    const projects = await response.json();
+    console.log('スペースのプロジェクト一覧を取得しました:', projects.length + '件');
+    return { success: true, projects: projects };
+  } catch (error) {
+    console.error('スペースプロジェクト取得エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * 指定スペースのプロジェクトの課題種別を取得する
+ * @param {string} spaceId - スペースID
+ * @param {string} projectId - プロジェクトID
+ * @returns {Promise<{success: boolean, issueTypes?: Array, message?: string}>}
+ */
+async function handleGetIssueTypesForSpace(spaceId, projectId) {
+  try {
+    const credentials = await getSpaceCredentials(spaceId);
+    if (!credentials.success) {
+      return { success: false, message: credentials.message };
+    }
+    
+    const { apiKey, domain } = credentials;
+    const baseUrl = buildBacklogApiUrl(domain);
+    
+    const response = await fetch(`${baseUrl}/projects/${projectId}/issueTypes?apiKey=${apiKey}`);
+    
+    if (!response.ok) {
+      let errorMessage = '課題種別の取得に失敗しました';
+      if (response.status === 401) errorMessage = 'APIキーが無効です';
+      else if (response.status === 404) errorMessage = 'プロジェクトが見つかりません';
+      throw new Error(errorMessage);
+    }
+    
+    const issueTypes = await response.json();
+    return { success: true, issueTypes: issueTypes };
+  } catch (error) {
+    console.error('スペース課題種別取得エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * 指定スペースで課題を作成する
+ * @param {string} spaceId - スペースID
+ * @param {string} projectId - プロジェクトID
+ * @param {string} summary - 件名
+ * @param {string} description - 説明
+ * @param {string} issueTypeId - 課題種別ID
+ * @returns {Promise<{success: boolean, issue?: Object, message?: string}>}
+ */
+async function handleCreateIssueForSpace(spaceId, projectId, summary, description, issueTypeId) {
+  try {
+    console.log('スペースでの課題作成:', { spaceId, projectId, summary: summary.substring(0, 20) + '...' });
+    
+    if (!projectId || !summary || !issueTypeId) {
+      throw new Error('必須フィールドが入力されていません');
+    }
+    
+    if (summary.length > 255) {
+      throw new Error('件名は255文字以内で入力してください');
+    }
+    
+    const credentials = await getSpaceCredentials(spaceId);
+    if (!credentials.success) {
+      return { success: false, message: credentials.message };
+    }
+    
+    const { apiKey, domain } = credentials;
+    const baseUrl = buildBacklogApiUrl(domain);
+    
+    // 優先度を取得
+    let priorityId = '3';
+    try {
+      const response = await fetch(`${baseUrl}/priorities?apiKey=${apiKey}`);
+      if (response.ok) {
+        const priorities = await response.json();
+        if (priorities.length > 0) {
+          const middleIndex = Math.floor(priorities.length / 2);
+          priorityId = priorities[middleIndex].id.toString();
+        }
+      }
+    } catch (e) {
+      console.warn('優先度の取得に失敗:', e);
+    }
+    
+    // 現在のユーザ情報を取得
+    let assigneeId = null;
+    try {
+      const response = await fetch(`${baseUrl}/users/myself?apiKey=${apiKey}`);
+      if (response.ok) {
+        const user = await response.json();
+        assigneeId = user.id;
+      }
+    } catch (e) {
+      console.warn('ユーザ情報の取得に失敗:', e);
+    }
+    
+    // 課題作成パラメータ
+    const params = new URLSearchParams({
+      apiKey: apiKey,
+      projectId: projectId,
+      summary: summary,
+      issueTypeId: issueTypeId,
+      priorityId: priorityId
+    });
+    
+    if (description && description.trim()) {
+      params.append('description', description.trim());
+    }
+    if (assigneeId) {
+      params.append('assigneeId', assigneeId);
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    params.append('dueDate', today);
+    
+    const response = await fetch(`${baseUrl}/issues?${params.toString()}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+    
+    if (!response.ok) {
+      let errorMessage = '課題の作成に失敗しました';
+      if (response.status === 401) errorMessage = 'APIキーが無効です';
+      else if (response.status === 403) errorMessage = '課題を作成する権限がありません';
+      else if (response.status === 404) errorMessage = 'プロジェクトが見つかりません';
+      throw new Error(errorMessage);
+    }
+    
+    const issue = await response.json();
+    console.log('課題を作成しました:', issue.issueKey);
+    return { success: true, issue: issue };
+  } catch (error) {
+    console.error('スペース課題作成エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * スペースIDを生成する
+ * @returns {string} ユニークなスペースID
+ */
+function generateSpaceId() {
+  return 'space_' + Date.now().toString(36) + '_' + Math.random().toString(36).substring(2, 8);
 }

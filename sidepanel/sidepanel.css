@@ -862,3 +862,122 @@ code {
     flex: 1;
 }
 
+
+/* スペース管理セクション */
+.space-management-section {
+    margin-bottom: 16px;
+}
+
+.space-list {
+    margin-bottom: 12px;
+}
+
+.space-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    transition: background-color 0.2s ease;
+}
+
+.space-item:hover {
+    background-color: #e9ecef;
+}
+
+.space-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.space-item-name {
+    font-weight: 600;
+    font-size: 14px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.space-item-domain {
+    font-size: 12px;
+    color: #6c757d;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.space-item-actions {
+    display: flex;
+    gap: 4px;
+    margin-left: 8px;
+    flex-shrink: 0;
+}
+
+.space-item-actions .btn-icon {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #6c757d;
+    transition: all 0.2s ease;
+}
+
+.space-item-actions .btn-icon:hover {
+    background-color: #dee2e6;
+    color: #333;
+}
+
+.space-item-actions .btn-icon.btn-danger:hover {
+    background-color: #f8d7da;
+    color: #dc3545;
+}
+
+.space-add-form {
+    padding: 12px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    margin-bottom: 16px;
+}
+
+.no-spaces-message {
+    padding: 12px;
+    background-color: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 6px;
+    text-align: center;
+    font-size: 13px;
+    color: #856404;
+}
+
+.no-spaces-message p {
+    margin: 0 0 8px 0;
+}
+
+/* スペース選択（課題追加画面） */
+#spaceSelect {
+    margin-bottom: 4px;
+}
+
+#projectSelectGroup {
+    margin-top: 8px;
+}
+
+/* お気に入りプロジェクトリスト内のスペース名 */
+.project-space {
+    font-size: 11px;
+    color: #339900;
+    font-weight: 600;
+}

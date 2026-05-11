@@ -192,5 +192,32 @@
   },
   "required": {
     "message": "*"
+  },
+  "addSpaceBtn": {
+    "message": "スペースを追加"
+  },
+  "spaceNameLabel": {
+    "message": "スペース名"
+  },
+  "spaceNamePlaceholder": {
+    "message": "例: 会社名"
+  },
+  "spaceSelectLabel": {
+    "message": "スペース選択"
+  },
+  "spaceSelectPlaceholder": {
+    "message": "スペースを選択してください"
+  },
+  "noSpacesMessage": {
+    "message": "スペースが登録されていません。設定画面でスペースを追加してください。"
+  },
+  "spaceRegistered": {
+    "message": "スペースを登録しました"
+  },
+  "spaceDeleted": {
+    "message": "スペースを削除しました"
+  },
+  "spaceDeleteConfirm": {
+    "message": "このスペースを削除しますか？関連するお気に入りプロジェクトも削除されます。"
   }
 }
