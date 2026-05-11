@@ -2282,13 +2282,13 @@ async function handleGetFavoriteProjects(spaceId) {
 async function handleGetSpaces() {
   try {
     console.log('スペース一覧の取得を開始');
-    const result = await chrome.storage.local.get(['spaces']);
+    const result = await chrome.storage.local.get(['spaces', 'apiKeyData', 'spacesMigrated']);
     
-    // マイグレーション: 旧形式のapiKeyDataが存在する場合はスペースに変換
-    if (!result.spaces || result.spaces.length === 0) {
-      const legacyResult = await chrome.storage.local.get(['apiKeyData']);
-      if (legacyResult.apiKeyData) {
-        const { domain, createdAt, encryptedKey } = legacyResult.apiKeyData;
+    // マイグレーション: 旧形式のapiKeyDataが存在しスペースが未登録の場合
+    // ただしマイグレーション済み（ユーザーが削除した）場合は再マイグレーションしない
+    if ((!result.spaces || result.spaces.length === 0) && !result.spacesMigrated) {
+      if (result.apiKeyData && result.apiKeyData.encryptedKey) {
+        const { domain, createdAt, encryptedKey } = result.apiKeyData;
         const migratedSpace = {
           id: generateSpaceId(),
           name: domain.split('.')[0],
@@ -2296,15 +2296,36 @@ async function handleGetSpaces() {
           encryptedKey: encryptedKey,
           createdAt: createdAt || new Date().toISOString()
         };
-        await chrome.storage.local.set({ spaces: [migratedSpace] });
+        await chrome.storage.local.set({ spaces: [migratedSpace], spacesMigrated: true });
         console.log('旧形式のAPIキーデータをスペースにマイグレーションしました:', migratedSpace.name);
         return { success: true, spaces: [migratedSpace] };
       }
+      return { success: true, spaces: [] };
     }
     
-    const spaces = result.spaces || [];
-    console.log('スペース一覧を取得しました:', spaces.length + '件');
-    return { success: true, spaces: spaces };
+    // 既存スペースデータの修復: encryptedKeyがないスペースを旧apiKeyDataから補完
+    let needsSave = false;
+    const spaces = (result.spaces || []).map(space => {
+      if (!space.encryptedKey && result.apiKeyData && result.apiKeyData.encryptedKey) {
+        // ドメインが一致する場合のみ補完
+        if (space.domain === result.apiKeyData.domain) {
+          console.log('スペースのencryptedKeyを旧データから補完:', space.name);
+          needsSave = true;
+          return { ...space, encryptedKey: result.apiKeyData.encryptedKey };
+        }
+      }
+      return space;
+    });
+    
+    // encryptedKeyがないスペースを除外（補完できなかったもの）
+    const validSpaces = spaces.filter(s => s.encryptedKey);
+    
+    if (needsSave || validSpaces.length !== (result.spaces || []).length) {
+      await chrome.storage.local.set({ spaces: validSpaces });
+    }
+    
+    console.log('スペース一覧を取得しました:', validSpaces.length + '件');
+    return { success: true, spaces: validSpaces };
   } catch (error) {
     console.error('スペース一覧取得エラー:', error);
     return { success: false, message: error.message, spaces: [] };
@@ -2380,16 +2401,31 @@ async function handleDeleteSpace(spaceId) {
     const spaces = result.spaces || [];
     const spaceFavorites = result.spaceFavoriteProjects || {};
     
+    // 削除対象のスペースを取得（旧apiKeyDataのクリーンアップ判定用）
+    const targetSpace = spaces.find(s => s.id === spaceId);
+    
     // スペースを削除
     const filteredSpaces = spaces.filter(s => s.id !== spaceId);
     
     // お気に入りプロジェクトも削除
     delete spaceFavorites[spaceId];
     
-    await chrome.storage.local.set({ 
+    const updateData = { 
       spaces: filteredSpaces,
-      spaceFavoriteProjects: spaceFavorites
-    });
+      spaceFavoriteProjects: spaceFavorites,
+      spacesMigrated: true  // マイグレーション済みフラグ
+    };
+    
+    // 削除されたスペースが旧apiKeyDataと同じドメインなら旧データも削除
+    if (targetSpace) {
+      const legacyResult = await chrome.storage.local.get(['apiKeyData']);
+      if (legacyResult.apiKeyData && legacyResult.apiKeyData.domain === targetSpace.domain) {
+        await chrome.storage.local.remove(['apiKeyData']);
+        console.log('旧apiKeyDataも削除しました');
+      }
+    }
+    
+    await chrome.storage.local.set(updateData);
     
     console.log('スペースを削除しました:', spaceId);
     return { success: true, message: 'スペースを削除しました' };
