@@ -93,6 +93,8 @@ class SidePanelUI {
         this.saveFavoriteProjectsBtn = document.getElementById('saveFavoriteProjectsBtn');
         this.saveFavoriteProjectsGroup = document.getElementById('saveFavoriteProjectsGroup');
         this.favoriteProjectsMessage = document.getElementById('favoriteProjectsMessage');
+        this.favoriteSpaceSelectGroup = document.getElementById('favoriteSpaceSelectGroup');
+        this.favoriteSpaceSelect = document.getElementById('favoriteSpaceSelect');
 
         // お気に入りプロジェクト関連の要素（Add Issue）
         this.favoriteProjectSelect = document.getElementById('favoriteProjectSelect');
@@ -1220,12 +1222,21 @@ class SidePanelUI {
     }
 
     /**
-     * Settingsパネル用: 全プロジェクトを読み込んでチェックボックス一覧を表示
-     * スペースが登録されている場合は最初のスペースのプロジェクトを読み込む
+     * Settingsパネル用: 選択されたスペースのプロジェクトを読み込んでチェックボックス一覧を表示
      * @returns {Promise<void>}
      */
     async loadAllProjectsForFavorites() {
         try {
+            // スペースが登録されている場合、スペースが選択されているか確認
+            if (this.spaces.length > 0) {
+                const selectedSpaceId = this.favoriteSpaceSelect ? this.favoriteSpaceSelect.value : '';
+                if (!selectedSpaceId) {
+                    this.showMessage('スペースを選択してください', 'error');
+                    return;
+                }
+                this.selectedSpaceForSettings = selectedSpaceId;
+            }
+
             // ローディング表示
             this.favoriteProjectsLoading.classList.remove('hidden');
             this.favoriteProjectsError.classList.add('hidden');
@@ -1241,27 +1252,11 @@ class SidePanelUI {
 
             let response;
             
-            // スペースが登録されている場合はスペースごとにプロジェクトを取得
-            if (this.spaces.length > 0) {
-                // 全スペースのプロジェクトを取得してマージ
-                const allProjects = [];
-                for (const space of this.spaces) {
-                    try {
-                        const spaceResponse = await this.sendMessageToBackground('getProjectsForSpace', { spaceId: space.id });
-                        if (spaceResponse.success) {
-                            // プロジェクトにスペース情報を付加
-                            spaceResponse.projects.forEach(p => {
-                                p._spaceId = space.id;
-                                p._spaceName = space.name;
-                            });
-                            allProjects.push(...spaceResponse.projects);
-                        }
-                    } catch (e) {
-                        console.warn(`スペース ${space.name} のプロジェクト取得に失敗:`, e);
-                    }
-                }
-                response = { success: true, projects: allProjects };
+            if (this.selectedSpaceForSettings) {
+                // 選択されたスペースのプロジェクトを取得
+                response = await this.sendMessageToBackground('getProjectsForSpace', { spaceId: this.selectedSpaceForSettings });
             } else {
+                // 後方互換性: スペースなしの場合は従来通り
                 response = await this.sendMessageToBackground('getProjects');
             }
 
@@ -1269,8 +1264,8 @@ class SidePanelUI {
                 this.favoriteProjectsData = response.projects;
                 this.favoriteProjectsLoading.classList.add('hidden');
                 
-                // スペースごとのお気に入りを読み込む
-                await this.loadFavoriteProjectIdsForAllSpaces();
+                // 選択されたスペースのお気に入りを読み込む
+                await this.loadFavoriteProjectIdsForSpace();
                 
                 this.renderFavoriteProjectsList();
                 this.favoriteProjectsList.classList.remove('hidden');
@@ -1293,21 +1288,15 @@ class SidePanelUI {
     }
 
     /**
-     * 全スペースのお気に入りプロジェクトIDを読み込む
+     * 選択されたスペースのお気に入りプロジェクトIDを読み込む
      */
-    async loadFavoriteProjectIdsForAllSpaces() {
+    async loadFavoriteProjectIdsForSpace() {
         this.favoriteProjectIds = new Set();
         
-        if (this.spaces.length > 0) {
-            for (const space of this.spaces) {
-                try {
-                    const response = await this.sendMessageToBackground('getFavoriteProjects', { spaceId: space.id });
-                    if (response.success) {
-                        response.projects.forEach(p => this.favoriteProjectIds.add(p.id));
-                    }
-                } catch (e) {
-                    console.warn(`スペース ${space.name} のお気に入り取得に失敗:`, e);
-                }
+        if (this.selectedSpaceForSettings) {
+            const response = await this.sendMessageToBackground('getFavoriteProjects', { spaceId: this.selectedSpaceForSettings });
+            if (response.success) {
+                response.projects.forEach(p => this.favoriteProjectIds.add(p.id));
             }
         } else {
             const response = await this.sendMessageToBackground('getFavoriteProjects');
@@ -1379,10 +1368,8 @@ class SidePanelUI {
 
             const label = document.createElement('label');
             label.htmlFor = `fav-proj-${project.id}`;
-            // スペース名がある場合は表示
-            const spaceLabel = project._spaceName ? `<span class="project-space">[${this.escapeHtml(project._spaceName)}]</span> ` : '';
             label.innerHTML = `
-                ${spaceLabel}<span class="project-name">${this.escapeHtml(project.name)}</span>
+                <span class="project-name">${this.escapeHtml(project.name)}</span>
                 <span class="project-key">${this.escapeHtml(project.projectKey)}</span>
             `;
 
@@ -1393,7 +1380,7 @@ class SidePanelUI {
     }
 
     /**
-     * お気に入りプロジェクトを保存する（スペースごとに保存）
+     * お気に入りプロジェクトを保存する（選択されたスペースに保存）
      * @returns {Promise<void>}
      */
     async saveFavoriteProjects() {
@@ -1401,63 +1388,30 @@ class SidePanelUI {
             this.saveFavoriteProjectsBtn.disabled = true;
             this.saveFavoriteProjectsBtn.textContent = '保存中...';
 
-            // スペースごとにプロジェクトを分類して保存
-            if (this.spaces.length > 0) {
-                // スペースごとに選択されたプロジェクトを分類
-                const spaceProjects = {};
-                this.spaces.forEach(space => {
-                    spaceProjects[space.id] = [];
-                });
-
-                this.favoriteProjectIds.forEach(projectId => {
-                    const project = this.favoriteProjectsData.find(p => p.id === projectId);
-                    if (project && project._spaceId) {
-                        if (!spaceProjects[project._spaceId]) {
-                            spaceProjects[project._spaceId] = [];
-                        }
-                        spaceProjects[project._spaceId].push({
-                            id: project.id,
-                            projectKey: project.projectKey,
-                            name: project.name
-                        });
-                    }
-                });
-
-                // 各スペースごとに保存
-                for (const [spaceId, projects] of Object.entries(spaceProjects)) {
-                    await this.sendMessageToBackground('saveFavoriteProjects', {
-                        projects: projects,
-                        spaceId: spaceId
+            // 選択済みプロジェクトを収集
+            const selectedProjects = [];
+            this.favoriteProjectIds.forEach(projectId => {
+                const project = this.favoriteProjectsData.find(p => p.id === projectId);
+                if (project) {
+                    selectedProjects.push({
+                        id: project.id,
+                        projectKey: project.projectKey,
+                        name: project.name
                     });
                 }
+            });
 
+            const response = await this.sendMessageToBackground('saveFavoriteProjects', {
+                projects: selectedProjects,
+                spaceId: this.selectedSpaceForSettings || undefined
+            });
+
+            if (response.success) {
+                this.favoriteProjectIds = new Set(selectedProjects.map(p => p.id));
                 this.showFavoriteProjectsMessage('お気に入りプロジェクトを保存しました', 'success');
-                console.log('スペースごとにお気に入りプロジェクトを保存しました');
+                console.log('お気に入りプロジェクトを保存しました:', selectedProjects.length + '件');
             } else {
-                // 後方互換性: スペースなしの場合は従来通り
-                const selectedProjects = [];
-                this.favoriteProjectIds.forEach(projectId => {
-                    const project = this.favoriteProjectsData.find(p => p.id === projectId);
-                    if (project) {
-                        selectedProjects.push({
-                            id: project.id,
-                            projectKey: project.projectKey,
-                            name: project.name
-                        });
-                    }
-                });
-
-                const response = await this.sendMessageToBackground('saveFavoriteProjects', {
-                    projects: selectedProjects
-                });
-
-                if (response.success) {
-                    this.favoriteProjectIds = new Set(selectedProjects.map(p => p.id));
-                    this.showFavoriteProjectsMessage('お気に入りプロジェクトを保存しました', 'success');
-                    console.log('お気に入りプロジェクトを保存しました:', selectedProjects.length + '件');
-                } else {
-                    this.showFavoriteProjectsMessage('保存に失敗しました。再度お試しください。', 'error');
-                }
+                this.showFavoriteProjectsMessage('保存に失敗しました。再度お試しください。', 'error');
             }
 
             // 「課題種別ごとのテンプレート」プルダウンを最新のお気に入りに基づいて再構築
@@ -2767,10 +2721,40 @@ class SidePanelUI {
             if (response.success) {
                 this.spaces = response.spaces || [];
                 this.renderSpaceList();
+                this.renderFavoriteSpaceSelect();
                 console.log('スペース一覧を読み込みました:', this.spaces.length + '件');
             }
         } catch (error) {
             console.error('スペース一覧読み込みエラー:', error);
+        }
+    }
+
+    /**
+     * お気に入り設定用のスペース選択プルダウンを描画
+     */
+    renderFavoriteSpaceSelect() {
+        if (!this.favoriteSpaceSelect || !this.favoriteSpaceSelectGroup) return;
+
+        if (this.spaces.length === 0) {
+            this.favoriteSpaceSelectGroup.classList.add('hidden');
+            return;
+        }
+
+        // スペースが登録されている場合はプルダウンを表示
+        this.favoriteSpaceSelectGroup.classList.remove('hidden');
+        this.favoriteSpaceSelect.innerHTML = `<option value="">${i18n.getMessage('spaceSelectPlaceholder')}</option>`;
+
+        this.spaces.forEach(space => {
+            const option = document.createElement('option');
+            option.value = space.id;
+            option.textContent = `${space.name} (${space.domain})`;
+            this.favoriteSpaceSelect.appendChild(option);
+        });
+
+        // スペースが1つだけの場合は自動選択
+        if (this.spaces.length === 1) {
+            this.favoriteSpaceSelect.value = this.spaces[0].id;
+            this.selectedSpaceForSettings = this.spaces[0].id;
         }
     }
 

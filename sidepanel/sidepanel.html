@@ -127,6 +127,13 @@
                 <!-- お気に入りプロジェクト設定 -->
                 <h2 data-i18n="favoriteProjectsTitle">お気に入りプロジェクト</h2>
                 <div class="favorite-projects-section">
+                    <!-- スペース選択（お気に入り設定用） -->
+                    <div id="favoriteSpaceSelectGroup" class="form-group hidden">
+                        <label for="favoriteSpaceSelect" class="form-label" data-i18n="spaceSelectLabel">スペース選択</label>
+                        <select id="favoriteSpaceSelect" class="form-input">
+                            <option value="" data-i18n="spaceSelectPlaceholder">スペースを選択してください</option>
+                        </select>
+                    </div>
                     <div class="form-group">
                         <button id="loadFavoriteProjectsBtn" class="btn btn-secondary" data-testid="load-favorite-projects-btn" data-i18n="loadFavoriteProjectsBtn">プロジェクトを読み込む</button>
                     </div>
