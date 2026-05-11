@@ -2288,11 +2288,12 @@ async function handleGetSpaces() {
     if (!result.spaces || result.spaces.length === 0) {
       const legacyResult = await chrome.storage.local.get(['apiKeyData']);
       if (legacyResult.apiKeyData) {
-        const { domain, createdAt } = legacyResult.apiKeyData;
+        const { domain, createdAt, encryptedKey } = legacyResult.apiKeyData;
         const migratedSpace = {
           id: generateSpaceId(),
           name: domain.split('.')[0],
           domain: domain,
+          encryptedKey: encryptedKey,
           createdAt: createdAt || new Date().toISOString()
         };
         await chrome.storage.local.set({ spaces: [migratedSpace] });
@@ -2413,14 +2414,28 @@ async function getSpaceCredentials(spaceId) {
       return { success: false, message: 'スペースが見つかりません' };
     }
     
+    if (!space.encryptedKey) {
+      return { success: false, message: 'APIキーが設定されていません。スペースを再登録してください。' };
+    }
+    
     // APIキーの復号化
-    const decryptedData = atob(space.encryptedKey);
-    const apiKey = decryptedData.split(':')[0];
+    let apiKey;
+    try {
+      const decryptedData = atob(space.encryptedKey);
+      apiKey = decryptedData.split(':')[0];
+    } catch (decryptError) {
+      console.error('APIキー復号化エラー:', decryptError);
+      return { success: false, message: 'APIキーの復号化に失敗しました。スペースを再登録してください。' };
+    }
+    
+    if (!apiKey) {
+      return { success: false, message: 'APIキーが空です。スペースを再登録してください。' };
+    }
     
     return { success: true, apiKey: apiKey, domain: space.domain };
   } catch (error) {
     console.error('スペース認証情報取得エラー:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: error.message || 'スペース認証情報の取得に失敗しました' };
   }
 }
 
