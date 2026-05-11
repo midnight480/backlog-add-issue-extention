@@ -948,6 +948,42 @@ class SidePanelUI {
     }
 
     /**
+     * コピーボタン付きメッセージを表示する（課題作成成功時）
+     * @param {string} message - 表示するメッセージ
+     * @param {string} issueKey - 課題キー
+     * @param {string} issueUrl - 課題URL
+     * @param {string} markdownLink - コピーするMarkdownリンク
+     */
+    showMessageWithCopy(message, issueKey, issueUrl, markdownLink) {
+        const linkHtml = issueUrl 
+            ? `<a href="${this.escapeHtml(issueUrl)}" target="_blank" class="issue-link">${this.escapeHtml(issueKey)}</a>`
+            : `<strong>${this.escapeHtml(issueKey)}</strong>`;
+        
+        this.messageArea.innerHTML = `
+            <span>課題 ${linkHtml} が${this.escapeHtml(this.selectedProjectData.name)}プロジェクトに正常に作成されました</span>
+            <button class="btn-copy-issue" title="課題リンクをコピー">&#x1F4CB;</button>
+        `;
+        this.messageArea.className = 'message-area success';
+        this.messageArea.classList.remove('hidden');
+        
+        // コピーボタンのイベント
+        const copyBtn = this.messageArea.querySelector('.btn-copy-issue');
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(markdownLink);
+                copyBtn.textContent = '✓';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '📋';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (error) {
+                console.error('コピーに失敗:', error);
+            }
+        });
+    }
+
+    /**
      * メッセージを非表示にする
      */
     hideMessage() {
@@ -2150,9 +2186,15 @@ class SidePanelUI {
                 const space = this.spaces.find(s => s.id === this.selectedSpaceId);
                 const domain = space ? space.domain : '';
                 const issueUrl = domain ? `https://${domain}/view/${issueKey}` : '';
+                const markdownLink = issueUrl ? `[${issueKey}](${issueUrl})` : issueKey;
                 
-                const successMessage = `課題「${issueKey}」が${this.selectedProjectData.name}プロジェクトに正常に作成されました`;
-                this.showMessage(successMessage, 'success');
+                // コピーボタン付きの成功メッセージを表示
+                this.showMessageWithCopy(
+                    `課題「${issueKey}」が${this.selectedProjectData.name}プロジェクトに正常に作成されました`,
+                    issueKey,
+                    issueUrl,
+                    markdownLink
+                );
                 this.showCreationStatusWithCopy(issueKey, issueUrl);
                 
                 // 状態をクリア
@@ -2243,7 +2285,6 @@ class SidePanelUI {
         this.issueSummary.style.overflowY = 'hidden';
         
         this.updateIssueDescription();
-        this.hideCreationStatus();
         this.hideSummaryError();
         this.hideIssueTypeError();
     }
