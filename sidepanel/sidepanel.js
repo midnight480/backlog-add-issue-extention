@@ -2195,7 +2195,7 @@ class SidePanelUI {
                     issueUrl,
                     markdownLink
                 );
-                this.showCreationStatusWithCopy(issueKey, issueUrl);
+                this.hideCreationStatus();
                 
                 // 状態をクリア
                 await this.stateManager.clearState();
