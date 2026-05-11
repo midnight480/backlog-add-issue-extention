@@ -93,11 +93,29 @@ class SidePanelUI {
         this.saveFavoriteProjectsBtn = document.getElementById('saveFavoriteProjectsBtn');
         this.saveFavoriteProjectsGroup = document.getElementById('saveFavoriteProjectsGroup');
         this.favoriteProjectsMessage = document.getElementById('favoriteProjectsMessage');
+        this.favoriteSpaceSelectGroup = document.getElementById('favoriteSpaceSelectGroup');
+        this.favoriteSpaceSelect = document.getElementById('favoriteSpaceSelect');
 
         // お気に入りプロジェクト関連の要素（Add Issue）
         this.favoriteProjectSelect = document.getElementById('favoriteProjectSelect');
         this.noFavoriteProjectsMessage = document.getElementById('noFavoriteProjectsMessage');
         this.goToSettingsForFavoritesBtn = document.getElementById('goToSettingsForFavoritesBtn');
+
+        // スペース管理関連の要素（Settings）
+        this.spaceList = document.getElementById('spaceList');
+        this.addSpaceBtn = document.getElementById('addSpaceBtn');
+        this.spaceAddForm = document.getElementById('spaceAddForm');
+        this.spaceNameInput = document.getElementById('spaceNameInput');
+        this.spaceDomainInput = document.getElementById('spaceDomainInput');
+        this.spaceApiKeyInput = document.getElementById('spaceApiKeyInput');
+        this.saveSpaceBtn = document.getElementById('saveSpaceBtn');
+        this.cancelSpaceBtn = document.getElementById('cancelSpaceBtn');
+
+        // スペース選択関連の要素（Add Issue）
+        this.spaceSelect = document.getElementById('spaceSelect');
+        this.noSpacesMessage = document.getElementById('noSpacesMessage');
+        this.goToSettingsForSpacesBtn = document.getElementById('goToSettingsForSpacesBtn');
+        this.projectSelectGroup = document.getElementById('projectSelectGroup');
 
         this.issueTypeSelect = document.getElementById('issueTypeSelect');
         this.issueTypeError = document.getElementById('issueTypeError');
@@ -118,6 +136,11 @@ class SidePanelUI {
         // お気に入りプロジェクト関連の状態
         this.favoriteProjectsData = []; // Settings用: 全プロジェクト一覧
         this.favoriteProjectIds = new Set(); // 選択済みプロジェクトIDのセット
+
+        // スペース管理関連の状態
+        this.spaces = []; // 登録済みスペース一覧
+        this.selectedSpaceId = null; // 課題追加画面で選択中のスペースID
+        this.selectedSpaceForSettings = null; // 設定画面で操作中のスペースID
 
         // 課題フォーム関連の状態
         this.currentPageInfo = null;
@@ -155,6 +178,9 @@ class SidePanelUI {
 
         // 初期状態の読み込み
         await this.loadApiKeyStatus();
+
+        // スペース一覧を読み込む
+        await this.loadSpaces();
 
         // お気に入りプロジェクトをストレージから読み込む
         // （initializeTemplateEditor内でお気に入り情報を参照するため、先に実行する）
@@ -606,6 +632,7 @@ class SidePanelUI {
      */
     async saveState() {
         const state = {
+            selectedSpace: this.selectedSpaceId,
             selectedProject: this.selectedProjectData,
             issueType: this.issueTypeSelect ? this.issueTypeSelect.value : null,
             summary: this.issueSummary ? this.issueSummary.value : '',
@@ -622,13 +649,22 @@ class SidePanelUI {
     async loadState() {
         const state = await this.stateManager.loadState();
 
+        // スペースの復元
+        if (state.selectedSpace) {
+            this.selectedSpaceId = state.selectedSpace;
+        }
+
         // プロジェクトの復元（favoriteProjectSelectへの反映はrenderFavoriteProjectsInAddIssueで行う）
         if (state.selectedProject) {
             this.selectedProjectData = state.selectedProject;
             this.issueFormSection.classList.remove('hidden');
             
             // プロジェクトの課題種別を読み込み
-            await this.loadProjectIssueTypes(state.selectedProject.id);
+            if (this.selectedSpaceId) {
+                await this.loadProjectIssueTypesForSpace(state.selectedProject.id);
+            } else {
+                await this.loadProjectIssueTypes(state.selectedProject.id);
+            }
         }
         // 課題種別の復元
         if (state.issueType && this.issueTypeSelect) {
@@ -780,6 +816,39 @@ class SidePanelUI {
             });
         }
 
+        // スペース管理関連のイベント（Settings）
+        if (this.addSpaceBtn) {
+            this.addSpaceBtn.addEventListener('click', () => {
+                this.showSpaceAddForm();
+            });
+        }
+
+        if (this.saveSpaceBtn) {
+            this.saveSpaceBtn.addEventListener('click', async () => {
+                await this.handleSaveSpace();
+            });
+        }
+
+        if (this.cancelSpaceBtn) {
+            this.cancelSpaceBtn.addEventListener('click', () => {
+                this.hideSpaceAddForm();
+            });
+        }
+
+        // スペース選択（Add Issue）
+        if (this.spaceSelect) {
+            this.spaceSelect.addEventListener('change', async (e) => {
+                await this.handleSpaceChange(e.target.value);
+            });
+        }
+
+        // Settings誘導ボタン（スペース未登録時）
+        if (this.goToSettingsForSpacesBtn) {
+            this.goToSettingsForSpacesBtn.addEventListener('click', () => {
+                this.showPanel('settings');
+            });
+        }
+
         // お気に入りプロジェクト選択（Add Issue）
         if (this.favoriteProjectSelect) {
             this.favoriteProjectSelect.addEventListener('change', async (e) => {
@@ -879,6 +948,42 @@ class SidePanelUI {
     }
 
     /**
+     * コピーボタン付きメッセージを表示する（課題作成成功時）
+     * @param {string} message - 表示するメッセージ
+     * @param {string} issueKey - 課題キー
+     * @param {string} issueUrl - 課題URL
+     * @param {string} markdownLink - コピーするMarkdownリンク
+     */
+    showMessageWithCopy(message, issueKey, issueUrl, markdownLink) {
+        const linkHtml = issueUrl 
+            ? `<a href="${this.escapeHtml(issueUrl)}" target="_blank" class="issue-link">${this.escapeHtml(issueKey)}</a>`
+            : `<strong>${this.escapeHtml(issueKey)}</strong>`;
+        
+        this.messageArea.innerHTML = `
+            <span>課題 ${linkHtml} が${this.escapeHtml(this.selectedProjectData.name)}プロジェクトに正常に作成されました</span>
+            <button class="btn-copy-issue" title="課題リンクをコピー">&#x1F4CB;</button>
+        `;
+        this.messageArea.className = 'message-area success';
+        this.messageArea.classList.remove('hidden');
+        
+        // コピーボタンのイベント
+        const copyBtn = this.messageArea.querySelector('.btn-copy-issue');
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(markdownLink);
+                copyBtn.textContent = '✓';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '📋';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (error) {
+                console.error('コピーに失敗:', error);
+            }
+        });
+    }
+
+    /**
      * メッセージを非表示にする
      */
     hideMessage() {
@@ -918,6 +1023,14 @@ class SidePanelUI {
      */
     async loadApiKeyStatus() {
         try {
+            // スペースが登録されている場合は旧API設定を非表示
+            if (this.spaces.length > 0) {
+                this.apiKeyNotRegistered.classList.add('hidden');
+                this.apiKeyRegistered.classList.add('hidden');
+                this.apiKeyChange.classList.add('hidden');
+                return;
+            }
+
             const response = await this.sendMessageToBackground('getApiKey');
             
             if (response.success) {
@@ -1069,17 +1182,36 @@ class SidePanelUI {
      */
     async initializeAddIssuePanel() {
         try {
-            const apiKeyResult = await this.sendMessageToBackground('getApiKey');
-            
-            if (!apiKeyResult.success) {
-                this.showApiKeyRequiredView();
-                return;
+            // スペースが登録されているか確認
+            if (this.spaces.length === 0) {
+                // スペース未登録: 旧APIキーがあるか確認
+                const apiKeyResult = await this.sendMessageToBackground('getApiKey');
+                if (!apiKeyResult.success) {
+                    this.showApiKeyRequiredView();
+                    return;
+                }
             }
 
             this.showProjectSelectionView();
 
-            // お気に入りプロジェクトをプルダウンに描画
-            await this.renderFavoriteProjectsInAddIssue();
+            // スペースプルダウンを描画
+            this.renderSpacesInAddIssue();
+
+            // スペースが選択されている場合はプロジェクトを表示
+            if (this.selectedSpaceId) {
+                if (this.projectSelectGroup) {
+                    this.projectSelectGroup.classList.remove('hidden');
+                }
+                await this.renderFavoriteProjectsInAddIssue();
+            } else if (this.spaces.length === 1) {
+                // スペースが1つだけの場合は自動選択
+                this.selectedSpaceId = this.spaces[0].id;
+                this.spaceSelect.value = this.selectedSpaceId;
+                if (this.projectSelectGroup) {
+                    this.projectSelectGroup.classList.remove('hidden');
+                }
+                await this.renderFavoriteProjectsInAddIssue();
+            }
             
         } catch (error) {
             console.error('Add Issue Panel初期化エラー:', error);
@@ -1126,11 +1258,21 @@ class SidePanelUI {
     }
 
     /**
-     * Settingsパネル用: 全プロジェクトを読み込んでチェックボックス一覧を表示
+     * Settingsパネル用: 選択されたスペースのプロジェクトを読み込んでチェックボックス一覧を表示
      * @returns {Promise<void>}
      */
     async loadAllProjectsForFavorites() {
         try {
+            // スペースが登録されている場合、スペースが選択されているか確認
+            if (this.spaces.length > 0) {
+                const selectedSpaceId = this.favoriteSpaceSelect ? this.favoriteSpaceSelect.value : '';
+                if (!selectedSpaceId) {
+                    this.showMessage('スペースを選択してください', 'error');
+                    return;
+                }
+                this.selectedSpaceForSettings = selectedSpaceId;
+            }
+
             // ローディング表示
             this.favoriteProjectsLoading.classList.remove('hidden');
             this.favoriteProjectsError.classList.add('hidden');
@@ -1144,11 +1286,23 @@ class SidePanelUI {
             }
             this.saveFavoriteProjectsGroup.style.display = 'none';
 
-            const response = await this.sendMessageToBackground('getProjects');
+            let response;
+            
+            if (this.selectedSpaceForSettings) {
+                // 選択されたスペースのプロジェクトを取得
+                response = await this.sendMessageToBackground('getProjectsForSpace', { spaceId: this.selectedSpaceForSettings });
+            } else {
+                // 後方互換性: スペースなしの場合は従来通り
+                response = await this.sendMessageToBackground('getProjects');
+            }
 
             if (response.success) {
                 this.favoriteProjectsData = response.projects;
                 this.favoriteProjectsLoading.classList.add('hidden');
+                
+                // 選択されたスペースのお気に入りを読み込む
+                await this.loadFavoriteProjectIdsForSpace();
+                
                 this.renderFavoriteProjectsList();
                 this.favoriteProjectsList.classList.remove('hidden');
                 if (this.favoriteProjectsSearch) {
@@ -1166,6 +1320,25 @@ class SidePanelUI {
             this.favoriteProjectsLoading.classList.add('hidden');
             this.favoriteProjectsError.classList.remove('hidden');
             this.showMessage('プロジェクトの読み込みに失敗しました', 'error');
+        }
+    }
+
+    /**
+     * 選択されたスペースのお気に入りプロジェクトIDを読み込む
+     */
+    async loadFavoriteProjectIdsForSpace() {
+        this.favoriteProjectIds = new Set();
+        
+        if (this.selectedSpaceForSettings) {
+            const response = await this.sendMessageToBackground('getFavoriteProjects', { spaceId: this.selectedSpaceForSettings });
+            if (response.success) {
+                response.projects.forEach(p => this.favoriteProjectIds.add(p.id));
+            }
+        } else {
+            const response = await this.sendMessageToBackground('getFavoriteProjects');
+            if (response.success) {
+                response.projects.forEach(p => this.favoriteProjectIds.add(p.id));
+            }
         }
     }
 
@@ -1243,7 +1416,7 @@ class SidePanelUI {
     }
 
     /**
-     * お気に入りプロジェクトを保存する
+     * お気に入りプロジェクトを保存する（選択されたスペースに保存）
      * @returns {Promise<void>}
      */
     async saveFavoriteProjects() {
@@ -1251,8 +1424,7 @@ class SidePanelUI {
             this.saveFavoriteProjectsBtn.disabled = true;
             this.saveFavoriteProjectsBtn.textContent = '保存中...';
 
-            // `favoriteProjectIds`（Set）を一次情報として選択済みプロジェクトを収集
-            // （検索フィルタで非表示になったチェックボックスも漏れなく反映される）
+            // 選択済みプロジェクトを収集
             const selectedProjects = [];
             this.favoriteProjectIds.forEach(projectId => {
                 const project = this.favoriteProjectsData.find(p => p.id === projectId);
@@ -1266,23 +1438,23 @@ class SidePanelUI {
             });
 
             const response = await this.sendMessageToBackground('saveFavoriteProjects', {
-                projects: selectedProjects
+                projects: selectedProjects,
+                spaceId: this.selectedSpaceForSettings || undefined
             });
 
             if (response.success) {
-                // 選択済みIDセットを更新（保存されたプロジェクトのみ残す）
                 this.favoriteProjectIds = new Set(selectedProjects.map(p => p.id));
                 this.showFavoriteProjectsMessage('お気に入りプロジェクトを保存しました', 'success');
                 console.log('お気に入りプロジェクトを保存しました:', selectedProjects.length + '件');
-
-                // 「課題種別ごとのテンプレート」プルダウンを最新のお気に入りに基づいて再構築
-                try {
-                    await this.loadIssueTypesForTemplateEditor();
-                } catch (e) {
-                    console.warn('課題種別プルダウンの再構築に失敗:', e);
-                }
             } else {
                 this.showFavoriteProjectsMessage('保存に失敗しました。再度お試しください。', 'error');
+            }
+
+            // 「課題種別ごとのテンプレート」プルダウンを最新のお気に入りに基づいて再構築
+            try {
+                await this.loadIssueTypesForTemplateEditor();
+            } catch (e) {
+                console.warn('課題種別プルダウンの再構築に失敗:', e);
             }
         } catch (error) {
             console.error('お気に入りプロジェクト保存エラー:', error);
@@ -1310,11 +1482,20 @@ class SidePanelUI {
 
     /**
      * Add Issueパネル用: お気に入りプロジェクトをプルダウンに描画
+     * スペースが選択されている場合はそのスペースのお気に入りを表示
      * @returns {Promise<void>}
      */
     async renderFavoriteProjectsInAddIssue() {
         try {
-            const response = await this.sendMessageToBackground('getFavoriteProjects');
+            let response;
+            
+            if (this.selectedSpaceId) {
+                // スペースが選択されている場合はスペースごとのお気に入りを取得
+                response = await this.sendMessageToBackground('getFavoriteProjects', { spaceId: this.selectedSpaceId });
+            } else {
+                // 後方互換性: スペース未選択の場合は従来通り
+                response = await this.sendMessageToBackground('getFavoriteProjects');
+            }
 
             if (!response.success || response.projects.length === 0) {
                 // お気に入り未設定: メッセージを表示
@@ -1505,7 +1686,12 @@ class SidePanelUI {
             this.issueSummary.style.overflowY = 'hidden';
         }
         
-        await this.loadProjectIssueTypes(project.id);
+        // スペースが選択されている場合はスペース経由で課題種別を読み込む
+        if (this.selectedSpaceId) {
+            await this.loadProjectIssueTypesForSpace(project.id);
+        } else {
+            await this.loadProjectIssueTypes(project.id);
+        }
         await this.loadCurrentPageInfo();
         
         // 説明欄が空の場合のみテンプレートを適用
@@ -1590,6 +1776,39 @@ class SidePanelUI {
                 this.projectIssueTypes = response.issueTypes;
                 this.renderIssueTypes();
                 console.log('課題種別を読み込みました:', this.projectIssueTypes.length + '件');
+            } else {
+                this.showIssueTypeError();
+                this.showMessage(`課題種別の読み込みに失敗しました: ${response.message}`, 'error');
+            }
+            
+        } catch (error) {
+            console.error('課題種別読み込みエラー:', error);
+            this.showIssueTypeError();
+            this.showMessage('課題種別の読み込みに失敗しました', 'error');
+        }
+    }
+
+    /**
+     * スペース経由でプロジェクトの課題種別を読み込む
+     * @param {string} projectId - プロジェクトID
+     */
+    async loadProjectIssueTypesForSpace(projectId) {
+        if (!this.selectedSpaceId) {
+            return this.loadProjectIssueTypes(projectId);
+        }
+        
+        try {
+            this.showIssueTypeLoading();
+            
+            const response = await this.sendMessageToBackground('getIssueTypesForSpace', { 
+                spaceId: this.selectedSpaceId, 
+                projectId: projectId 
+            });
+            
+            if (response.success) {
+                this.projectIssueTypes = response.issueTypes;
+                this.renderIssueTypes();
+                console.log('課題種別を読み込みました（スペース経由）:', this.projectIssueTypes.length + '件');
             } else {
                 this.showIssueTypeError();
                 this.showMessage(`課題種別の読み込みに失敗しました: ${response.message}`, 'error');
@@ -1733,8 +1952,23 @@ class SidePanelUI {
      */
     async updateIssueDescription() {
         try {
+            // ページ情報がない場合は取得を試みる
             if (!this.currentPageInfo || !this.currentPageInfo.url) {
-                console.warn('ページ情報が取得できていません');
+                await this.loadCurrentPageInfo();
+            }
+            
+            // それでも取得できない場合は空のテンプレートを適用
+            if (!this.currentPageInfo || !this.currentPageInfo.url) {
+                console.log('ページ情報が取得できないため、テンプレートのみ適用します');
+                // 変数なしでテンプレートを適用
+                const templateResponse = await this.sendMessageToBackground('loadTemplate');
+                if (templateResponse.success && templateResponse.template) {
+                    // 変数を空文字で置換
+                    let text = templateResponse.template;
+                    text = text.replace(/\{\{url\}\}/g, '');
+                    text = text.replace(/\{\{title\}\}/g, '');
+                    this.issueDescription.value = text.trim();
+                }
                 return;
             }
             
@@ -1925,17 +2159,43 @@ class SidePanelUI {
             this.createIssueBtn.textContent = '作成中...';
             this.showCreationStatus('課題を作成しています...', 'loading');
 
-            const response = await this.sendMessageToBackground('createIssue', {
-                projectId: this.selectedProjectData.id,
-                summary: summary,
-                description: description,
-                issueTypeId: issueTypeId
-            });
+            let response;
+            
+            if (this.selectedSpaceId) {
+                // スペースが選択されている場合はスペース経由で作成
+                response = await this.sendMessageToBackground('createIssueForSpace', {
+                    spaceId: this.selectedSpaceId,
+                    projectId: this.selectedProjectData.id,
+                    summary: summary,
+                    description: description,
+                    issueTypeId: issueTypeId
+                });
+            } else {
+                // 後方互換性: スペース未選択の場合は従来通り
+                response = await this.sendMessageToBackground('createIssue', {
+                    projectId: this.selectedProjectData.id,
+                    summary: summary,
+                    description: description,
+                    issueTypeId: issueTypeId
+                });
+            }
 
             if (response.success) {
-                const successMessage = `課題「${response.issue.issueKey}」が${this.selectedProjectData.name}プロジェクトに正常に作成されました`;
-                this.showMessage(successMessage, 'success');
-                this.showCreationStatus(`課題が作成されました: ${response.issue.issueKey}`, 'success');
+                // 課題URLを構築
+                const issueKey = response.issue.issueKey;
+                const space = this.spaces.find(s => s.id === this.selectedSpaceId);
+                const domain = space ? space.domain : '';
+                const issueUrl = domain ? `https://${domain}/view/${issueKey}` : '';
+                const markdownLink = issueUrl ? `[${issueKey}](${issueUrl})` : issueKey;
+                
+                // コピーボタン付きの成功メッセージを表示
+                this.showMessageWithCopy(
+                    `課題「${issueKey}」が${this.selectedProjectData.name}プロジェクトに正常に作成されました`,
+                    issueKey,
+                    issueUrl,
+                    markdownLink
+                );
+                this.hideCreationStatus();
                 
                 // 状態をクリア
                 await this.stateManager.clearState();
@@ -1970,6 +2230,43 @@ class SidePanelUI {
     }
 
     /**
+     * 課題作成成功時にコピーボタン付きステータスを表示
+     * @param {string} issueKey - 課題キー
+     * @param {string} issueUrl - 課題URL
+     */
+    showCreationStatusWithCopy(issueKey, issueUrl) {
+        const statusMessage = this.issueCreationStatus.querySelector('.status-message');
+        
+        // コピーボタン付きのHTMLを構築
+        const markdownLink = issueUrl ? `[${issueKey}](${issueUrl})` : issueKey;
+        
+        statusMessage.innerHTML = `
+            <span>課題が作成されました: </span>
+            <a href="${this.escapeHtml(issueUrl)}" target="_blank" class="issue-link">${this.escapeHtml(issueKey)}</a>
+            <button class="btn-copy-issue" title="課題リンクをコピー">&#x1F4CB;</button>
+        `;
+        
+        // コピーボタンのイベント
+        const copyBtn = statusMessage.querySelector('.btn-copy-issue');
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(markdownLink);
+                copyBtn.textContent = '✓';
+                copyBtn.classList.add('copied');
+                setTimeout(() => {
+                    copyBtn.textContent = '📋';
+                    copyBtn.classList.remove('copied');
+                }, 2000);
+            } catch (error) {
+                console.error('コピーに失敗:', error);
+            }
+        });
+        
+        this.issueCreationStatus.className = 'creation-status success';
+        this.issueCreationStatus.classList.remove('hidden');
+    }
+
+    /**
      * 作成ステータスを非表示
      */
     hideCreationStatus() {
@@ -1988,7 +2285,6 @@ class SidePanelUI {
         this.issueSummary.style.overflowY = 'hidden';
         
         this.updateIssueDescription();
-        this.hideCreationStatus();
         this.hideSummaryError();
         this.hideIssueTypeError();
     }
@@ -2190,8 +2486,8 @@ class SidePanelUI {
             if (tabs.length > 0) {
                 const tab = tabs[0];
                 this.currentPageInfo = {
-                    url: tab.url,
-                    title: tab.title
+                    url: tab.url || '',
+                    title: tab.title || ''
                 };
                 
                 // テンプレートを適用して説明欄を更新
@@ -2200,7 +2496,7 @@ class SidePanelUI {
                 // 状態を保存
                 await this.saveState();
                 
-                console.log('ページ情報を再読み込みしました:', this.currentPageInfo.url);
+                console.log('ページ情報を再読み込みしました:', this.currentPageInfo.url || '(URL取得不可)');
             }
         } catch (error) {
             console.error('ページ情報再読み込みエラー:', error);
@@ -2511,6 +2807,259 @@ class SidePanelUI {
      */
     hideTemplateMessage() {
         this.templateMessage.classList.add('hidden');
+    }
+
+    // ===== スペース管理機能 =====
+
+    /**
+     * スペース一覧を読み込む
+     */
+    async loadSpaces() {
+        try {
+            const response = await this.sendMessageToBackground('getSpaces');
+            if (response.success) {
+                this.spaces = response.spaces || [];
+                this.renderSpaceList();
+                this.renderFavoriteSpaceSelect();
+                console.log('スペース一覧を読み込みました:', this.spaces.length + '件');
+            }
+        } catch (error) {
+            console.error('スペース一覧読み込みエラー:', error);
+        }
+    }
+
+    /**
+     * お気に入り設定用のスペース選択プルダウンを描画
+     */
+    renderFavoriteSpaceSelect() {
+        if (!this.favoriteSpaceSelect || !this.favoriteSpaceSelectGroup) return;
+
+        if (this.spaces.length === 0) {
+            this.favoriteSpaceSelectGroup.classList.add('hidden');
+            return;
+        }
+
+        // スペースが登録されている場合はプルダウンを表示
+        this.favoriteSpaceSelectGroup.classList.remove('hidden');
+        this.favoriteSpaceSelect.innerHTML = `<option value="">${i18n.getMessage('spaceSelectPlaceholder')}</option>`;
+
+        this.spaces.forEach(space => {
+            const option = document.createElement('option');
+            option.value = space.id;
+            option.textContent = `${space.name} (${space.domain})`;
+            this.favoriteSpaceSelect.appendChild(option);
+        });
+
+        // スペースが1つだけの場合は自動選択
+        if (this.spaces.length === 1) {
+            this.favoriteSpaceSelect.value = this.spaces[0].id;
+            this.selectedSpaceForSettings = this.spaces[0].id;
+        }
+    }
+
+    /**
+     * スペース一覧を描画（Settings画面）
+     */
+    renderSpaceList() {
+        if (!this.spaceList) return;
+        this.spaceList.innerHTML = '';
+
+        if (this.spaces.length === 0) {
+            this.spaceList.innerHTML = '<p style="padding:8px;color:#6c757d;font-size:13px;">スペースが登録されていません</p>';
+            return;
+        }
+
+        this.spaces.forEach(space => {
+            const item = document.createElement('div');
+            item.className = 'space-item';
+            item.innerHTML = `
+                <div class="space-item-info">
+                    <div class="space-item-name">${this.escapeHtml(space.name)}</div>
+                    <div class="space-item-domain">${this.escapeHtml(space.domain)}</div>
+                </div>
+                <div class="space-item-actions">
+                    <button class="btn-icon btn-danger" data-space-id="${space.id}" title="削除">&#x2715;</button>
+                </div>
+            `;
+
+            // 削除ボタンのイベント
+            const deleteBtn = item.querySelector('.btn-danger');
+            deleteBtn.addEventListener('click', async () => {
+                await this.handleDeleteSpace(space.id, space.name);
+            });
+
+            this.spaceList.appendChild(item);
+        });
+    }
+
+    /**
+     * スペース追加フォームを表示
+     */
+    showSpaceAddForm() {
+        if (this.spaceAddForm) {
+            this.spaceAddForm.classList.remove('hidden');
+            this.spaceNameInput.value = '';
+            this.spaceDomainInput.value = '';
+            this.spaceApiKeyInput.value = '';
+            this.spaceNameInput.focus();
+        }
+    }
+
+    /**
+     * スペース追加フォームを非表示
+     */
+    hideSpaceAddForm() {
+        if (this.spaceAddForm) {
+            this.spaceAddForm.classList.add('hidden');
+        }
+    }
+
+    /**
+     * スペースを登録する
+     */
+    async handleSaveSpace() {
+        const name = this.spaceNameInput.value.trim();
+        const domain = this.spaceDomainInput.value.trim();
+        const apiKey = this.spaceApiKeyInput.value.trim();
+
+        // バリデーション
+        if (!domain) {
+            this.showMessage('ドメインを入力してください', 'error');
+            return;
+        }
+
+        const backlogDomainPattern = /^[a-zA-Z0-9][a-zA-Z0-9\-]*\.backlog\.(jp|com)$/;
+        if (!backlogDomainPattern.test(domain)) {
+            this.showMessage('有効なBacklogドメインを入力してください（例: mycompany.backlog.jp）', 'error');
+            return;
+        }
+
+        if (!apiKey) {
+            this.showMessage('APIキーを入力してください', 'error');
+            return;
+        }
+
+        if (apiKey.length < 10) {
+            this.showMessage('APIキーが短すぎます', 'error');
+            return;
+        }
+
+        try {
+            this.saveSpaceBtn.disabled = true;
+            this.saveSpaceBtn.textContent = '登録中...';
+
+            const response = await this.sendMessageToBackground('saveSpace', {
+                space: {
+                    name: name || domain.split('.')[0],
+                    domain: domain,
+                    apiKey: apiKey
+                }
+            });
+
+            if (response.success) {
+                this.showMessage(i18n.getMessage('spaceRegistered'), 'success');
+                this.hideSpaceAddForm();
+                await this.loadSpaces();
+            } else {
+                this.showMessage(`スペースの登録に失敗しました: ${response.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('スペース登録エラー:', error);
+            this.showMessage('スペースの登録に失敗しました', 'error');
+        } finally {
+            this.saveSpaceBtn.disabled = false;
+            this.saveSpaceBtn.textContent = '登録';
+        }
+    }
+
+    /**
+     * スペースを削除する
+     * @param {string} spaceId - スペースID
+     * @param {string} spaceName - スペース名（確認用）
+     */
+    async handleDeleteSpace(spaceId, spaceName) {
+        if (!confirm(i18n.getMessage('spaceDeleteConfirm'))) {
+            return;
+        }
+
+        try {
+            const response = await this.sendMessageToBackground('deleteSpace', { spaceId });
+
+            if (response.success) {
+                this.showMessage(i18n.getMessage('spaceDeleted'), 'success');
+                await this.loadSpaces();
+            } else {
+                this.showMessage(`スペースの削除に失敗しました: ${response.message}`, 'error');
+            }
+        } catch (error) {
+            console.error('スペース削除エラー:', error);
+            this.showMessage('スペースの削除に失敗しました', 'error');
+        }
+    }
+
+    /**
+     * スペース選択変更時の処理（Add Issue画面）
+     * @param {string} spaceId - 選択されたスペースID
+     */
+    async handleSpaceChange(spaceId) {
+        this.selectedSpaceId = spaceId || null;
+        this.selectedProjectData = null;
+        this.issueFormSection.classList.add('hidden');
+        this.clearIssueTypes();
+
+        if (!spaceId) {
+            // スペース未選択
+            if (this.projectSelectGroup) {
+                this.projectSelectGroup.classList.add('hidden');
+            }
+            await this.saveState();
+            return;
+        }
+
+        // プロジェクト選択グループを表示
+        if (this.projectSelectGroup) {
+            this.projectSelectGroup.classList.remove('hidden');
+        }
+
+        // 選択されたスペースのお気に入りプロジェクトを読み込む
+        await this.renderFavoriteProjectsInAddIssue();
+    }
+
+    /**
+     * Add Issue画面のスペースプルダウンを描画
+     */
+    renderSpacesInAddIssue() {
+        if (!this.spaceSelect) return;
+
+        this.spaceSelect.innerHTML = `<option value="">${i18n.getMessage('spaceSelectPlaceholder')}</option>`;
+
+        if (this.spaces.length === 0) {
+            this.spaceSelect.classList.add('hidden');
+            if (this.noSpacesMessage) {
+                this.noSpacesMessage.classList.remove('hidden');
+            }
+            if (this.projectSelectGroup) {
+                this.projectSelectGroup.classList.add('hidden');
+            }
+            return;
+        }
+
+        this.spaceSelect.classList.remove('hidden');
+        if (this.noSpacesMessage) {
+            this.noSpacesMessage.classList.add('hidden');
+        }
+
+        this.spaces.forEach(space => {
+            const option = document.createElement('option');
+            option.value = space.id;
+            option.textContent = `${space.name} (${space.domain})`;
+            this.spaceSelect.appendChild(option);
+        });
+
+        // 保存済みのスペース選択を復元
+        if (this.selectedSpaceId) {
+            this.spaceSelect.value = this.selectedSpaceId;
+        }
     }
 }
 

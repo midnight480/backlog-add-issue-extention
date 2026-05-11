@@ -178,6 +178,7 @@ class StateManager {
    */
   getDefaultState() {
     return {
+      selectedSpace: null,
       selectedProject: null,
       issueType: null,
       summary: '',
