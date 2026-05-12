@@ -34,28 +34,6 @@ class SidePanelUI {
         this.addIssuePanel = document.getElementById('addIssuePanel');
         this.messageArea = document.getElementById('messageArea');
 
-        // Settings Panel の要素
-        this.apiKeyNotRegistered = document.getElementById('apiKeyNotRegistered');
-        this.apiKeyRegistered = document.getElementById('apiKeyRegistered');
-        this.apiKeyChange = document.getElementById('apiKeyChange');
-        
-        // 入力フィールド
-        this.apiKeyInput = document.getElementById('apiKeyInput');
-        this.domainInput = document.getElementById('domainInput');
-        this.newApiKeyInput = document.getElementById('newApiKeyInput');
-        this.newDomainInput = document.getElementById('newDomainInput');
-        
-        // ボタン
-        this.registerApiKeyBtn = document.getElementById('registerApiKeyBtn');
-        this.changeApiKeyBtn = document.getElementById('changeApiKeyBtn');
-        this.deleteApiKeyBtn = document.getElementById('deleteApiKeyBtn');
-        this.updateApiKeyBtn = document.getElementById('updateApiKeyBtn');
-        this.cancelChangeBtn = document.getElementById('cancelChangeBtn');
-        
-        // 状態表示要素
-        this.registeredDomain = document.getElementById('registeredDomain');
-        this.registeredDate = document.getElementById('registeredDate');
-
         // テンプレートエディタの要素
         this.templateEditor = document.getElementById('templateEditor');
         this.templateCharCounter = document.getElementById('templateCharCounter');
@@ -64,6 +42,8 @@ class SidePanelUI {
         this.templateMessage = document.getElementById('templateMessage');
         this.templateIssueTypeSelect = document.getElementById('templateIssueTypeSelect');
         this.loadIssueTypeTemplateBtn = document.getElementById('loadIssueTypeTemplateBtn');
+        this.templateSpaceSelect = document.getElementById('templateSpaceSelect');
+        this.templateProjectSelect = document.getElementById('templateProjectSelect');
 
         // 再読み込みボタン
         this.reloadPageInfoBtn = document.getElementById('reloadPageInfoBtn');
@@ -698,27 +678,6 @@ class SidePanelUI {
             this.showPanel('addIssue');
         });
 
-        // Settings Panel のイベント
-        this.registerApiKeyBtn.addEventListener('click', () => {
-            this.handleRegisterApiKey();
-        });
-
-        this.changeApiKeyBtn.addEventListener('click', () => {
-            this.showApiKeyChangeForm();
-        });
-
-        this.deleteApiKeyBtn.addEventListener('click', () => {
-            this.handleDeleteApiKey();
-        });
-
-        this.updateApiKeyBtn.addEventListener('click', () => {
-            this.handleUpdateApiKey();
-        });
-
-        this.cancelChangeBtn.addEventListener('click', () => {
-            this.showApiKeyRegisteredView();
-        });
-
         // テンプレートエディタのイベント
         this.templateEditor.addEventListener('input', (e) => {
             this.updateCharacterCounter(e.target.value);
@@ -731,6 +690,20 @@ class SidePanelUI {
         this.resetTemplateBtn.addEventListener('click', () => {
             this.resetTemplateToDefault();
         });
+
+        // テンプレート用スペース選択のイベント
+        if (this.templateSpaceSelect) {
+            this.templateSpaceSelect.addEventListener('change', async (e) => {
+                await this.handleTemplateSpaceChange(e.target.value);
+            });
+        }
+
+        // テンプレート用プロジェクト選択のイベント
+        if (this.templateProjectSelect) {
+            this.templateProjectSelect.addEventListener('change', async (e) => {
+                await this.handleTemplateProjectChange(e.target.value);
+            });
+        }
 
         // テンプレート課題種別セレクトのイベント
         if (this.templateIssueTypeSelect) {
@@ -745,19 +718,6 @@ class SidePanelUI {
                 this.loadIssueTypeTemplateFromApi();
             });
         }
-
-        // Enterキーでの送信
-        this.apiKeyInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleRegisterApiKey();
-            }
-        });
-
-        this.newApiKeyInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                this.handleUpdateApiKey();
-            }
-        });
 
         // Add Issue Panel のイベント
         this.goToSettingsBtn.addEventListener('click', () => {
@@ -1021,159 +981,11 @@ class SidePanelUI {
     /**
      * APIキーの状態を読み込む
      */
+    /**
+     * APIキーの状態を読み込む（後方互換性のため残す）
+     */
     async loadApiKeyStatus() {
-        try {
-            // スペースが登録されている場合は旧API設定を非表示
-            if (this.spaces.length > 0) {
-                this.apiKeyNotRegistered.classList.add('hidden');
-                this.apiKeyRegistered.classList.add('hidden');
-                this.apiKeyChange.classList.add('hidden');
-                return;
-            }
-
-            const response = await this.sendMessageToBackground('getApiKey');
-            
-            if (response.success) {
-                this.showApiKeyRegisteredView();
-                this.registeredDomain.textContent = response.domain;
-                
-                const createdDate = new Date(response.createdAt);
-                this.registeredDate.textContent = createdDate.toLocaleDateString('ja-JP');
-            } else {
-                this.showApiKeyNotRegisteredView();
-            }
-        } catch (error) {
-            console.error('APIキー状態の読み込みエラー:', error);
-            this.showMessage('APIキー状態の読み込みに失敗しました', 'error');
-            this.showApiKeyNotRegisteredView();
-        }
-    }
-
-    /**
-     * APIキー未登録画面を表示
-     */
-    showApiKeyNotRegisteredView() {
-        this.apiKeyNotRegistered.classList.remove('hidden');
-        this.apiKeyRegistered.classList.add('hidden');
-        this.apiKeyChange.classList.add('hidden');
-        
-        this.apiKeyInput.value = '';
-        this.domainInput.value = '';
-    }
-
-    /**
-     * APIキー登録済み画面を表示
-     */
-    showApiKeyRegisteredView() {
-        this.apiKeyNotRegistered.classList.add('hidden');
-        this.apiKeyRegistered.classList.remove('hidden');
-        this.apiKeyChange.classList.add('hidden');
-    }
-
-    /**
-     * APIキー変更フォームを表示
-     */
-    showApiKeyChangeForm() {
-        this.apiKeyNotRegistered.classList.add('hidden');
-        this.apiKeyRegistered.classList.add('hidden');
-        this.apiKeyChange.classList.remove('hidden');
-        
-        this.newApiKeyInput.value = '';
-        this.newDomainInput.value = '';
-        this.newApiKeyInput.focus();
-    }
-
-    /**
-     * APIキー登録処理
-     */
-    async handleRegisterApiKey() {
-        if (!this.validateAllInputs('apiKey')) {
-            return;
-        }
-
-        const apiKey = this.apiKeyInput.value.trim();
-        const domain = this.domainInput.value.trim();
-
-        try {
-            this.registerApiKeyBtn.disabled = true;
-            this.registerApiKeyBtn.textContent = '登録中...';
-
-            const response = await this.sendMessageToBackground('saveApiKey', { apiKey, domain });
-
-            if (response.success) {
-                this.showMessage('APIキーが正常に登録されました', 'success');
-                this.loadApiKeyStatus();
-            } else {
-                this.showMessage(`APIキーの登録に失敗しました: ${response.message}`, 'error');
-            }
-        } catch (error) {
-            console.error('APIキー登録エラー:', error);
-            this.showMessage('APIキーの登録に失敗しました', 'error');
-        } finally {
-            this.registerApiKeyBtn.disabled = false;
-            this.registerApiKeyBtn.textContent = 'APIキーを登録';
-        }
-    }
-
-    /**
-     * APIキー更新処理
-     */
-    async handleUpdateApiKey() {
-        if (!this.validateAllInputs('apiKey')) {
-            return;
-        }
-
-        const apiKey = this.newApiKeyInput.value.trim();
-        const domain = this.newDomainInput.value;
-
-        try {
-            this.updateApiKeyBtn.disabled = true;
-            this.updateApiKeyBtn.textContent = '更新中...';
-
-            const response = await this.sendMessageToBackground('saveApiKey', { apiKey, domain });
-
-            if (response.success) {
-                this.showMessage('APIキーが正常に更新されました', 'success');
-                this.loadApiKeyStatus();
-            } else {
-                this.showMessage(`APIキーの更新に失敗しました: ${response.message}`, 'error');
-            }
-        } catch (error) {
-            console.error('APIキー更新エラー:', error);
-            this.showMessage('APIキーの更新に失敗しました', 'error');
-        } finally {
-            this.updateApiKeyBtn.disabled = false;
-            this.updateApiKeyBtn.textContent = '更新';
-        }
-    }
-
-    /**
-     * APIキー削除処理
-     */
-    async handleDeleteApiKey() {
-        if (!confirm('APIキーを削除しますか？この操作は取り消せません。')) {
-            return;
-        }
-
-        try {
-            this.deleteApiKeyBtn.disabled = true;
-            this.deleteApiKeyBtn.textContent = '削除中...';
-
-            const response = await this.sendMessageToBackground('deleteApiKey');
-
-            if (response.success) {
-                this.showMessage('APIキーが正常に削除されました', 'success');
-                this.loadApiKeyStatus();
-            } else {
-                this.showMessage(`APIキーの削除に失敗しました: ${response.message}`, 'error');
-            }
-        } catch (error) {
-            console.error('APIキー削除エラー:', error);
-            this.showMessage('APIキーの削除に失敗しました', 'error');
-        } finally {
-            this.deleteApiKeyBtn.disabled = false;
-            this.deleteApiKeyBtn.textContent = '削除';
-        }
+        // スペース管理に移行済みのため、何もしない
     }
 
     /**
@@ -2520,13 +2332,13 @@ class SidePanelUI {
                 issueTypeId: issueTypeId
             });
             
-            if (response.success) {
+            if (response.success && response.template != null) {
                 this.templateEditor.value = response.template;
                 this.updateCharacterCounter(response.template);
             } else {
                 // デフォルトテンプレートを表示
                 const defaultResponse = await this.sendMessageToBackground('loadTemplate');
-                if (defaultResponse.success) {
+                if (defaultResponse.success && defaultResponse.template != null) {
                     this.templateEditor.value = defaultResponse.template;
                     this.updateCharacterCounter(defaultResponse.template);
                 }
@@ -2546,10 +2358,12 @@ class SidePanelUI {
             this.loadIssueTypeTemplateBtn.disabled = true;
             this.loadIssueTypeTemplateBtn.textContent = '読み込み中...';
             
-            // お気に入りプロジェクトから最初のプロジェクトを使用
-            const favResponse = await this.sendMessageToBackground('getFavoriteProjects');
-            if (!favResponse.success || favResponse.projects.length === 0) {
-                this.showTemplateMessage('お気に入りプロジェクトが設定されていません。先にプロジェクトを設定してください。', 'error');
+            // スペースとプロジェクトが選択されているか確認
+            const spaceId = this.templateSpaceSelect ? this.templateSpaceSelect.value : '';
+            const projectId = this.templateProjectSelect ? this.templateProjectSelect.value : '';
+            
+            if (!spaceId || !projectId) {
+                this.showTemplateMessage('スペースとプロジェクトを選択してください', 'error');
                 return;
             }
             
@@ -2562,7 +2376,9 @@ class SidePanelUI {
             
             // Backlog APIから課題種別のテンプレートを取得
             const response = await this.sendMessageToBackground('getIssueTypeTemplate', {
-                issueTypeId: issueTypeId
+                issueTypeId: issueTypeId,
+                spaceId: spaceId,
+                projectId: parseInt(projectId, 10)
             });
             
             if (response.success && response.template) {
@@ -2595,8 +2411,8 @@ class SidePanelUI {
             // テンプレートを読み込んでUIに表示
             await this.loadTemplateToUI();
             
-            // 課題種別セレクトにお気に入りプロジェクトの種別を読み込む
-            await this.loadIssueTypesForTemplateEditor();
+            // テンプレート用スペースセレクトにスペース一覧を反映
+            this.populateTemplateSpaceSelect();
             
             console.log('テンプレートエディタの初期化が完了しました');
         } catch (error) {
@@ -2606,56 +2422,99 @@ class SidePanelUI {
     }
 
     /**
-     * テンプレートエディタ用に課題種別を読み込む
-     * お気に入りプロジェクトの課題種別を取得してセレクトに追加
+     * テンプレート用スペースセレクトにスペース一覧を反映
      */
-    async loadIssueTypesForTemplateEditor() {
+    populateTemplateSpaceSelect() {
+        if (!this.templateSpaceSelect) return;
+        
+        this.templateSpaceSelect.innerHTML = '<option value="">スペースを選択してください</option>';
+        
+        for (const space of this.spaces) {
+            const option = document.createElement('option');
+            option.value = space.id;
+            option.textContent = space.name || space.domain;
+            this.templateSpaceSelect.appendChild(option);
+        }
+    }
+
+    /**
+     * テンプレート用スペース変更ハンドラ
+     * スペースを選択したらプロジェクト一覧を読み込む
+     * @param {string} spaceId - 選択されたスペースID
+     */
+    async handleTemplateSpaceChange(spaceId) {
+        // プロジェクトセレクトをリセット
+        this.templateProjectSelect.innerHTML = '<option value="">プロジェクトを選択してください</option>';
+        this.templateProjectSelect.disabled = true;
+        
+        // 課題種別セレクトをリセット
+        this.templateIssueTypeSelect.innerHTML = '<option value="__default__">デフォルト（全種別共通）</option>';
+        this.templateIssueTypeSelect.disabled = true;
+        
+        if (!spaceId) return;
+        
         try {
-            const favResponse = await this.sendMessageToBackground('getFavoriteProjects');
-            if (!favResponse.success || favResponse.projects.length === 0) {
-                return; // お気に入りプロジェクトがない場合はスキップ
-            }
-
-            // 全お気に入りプロジェクトの課題種別を取得
-            const allIssueTypes = [];
-            const seenIds = new Set();
-
-            for (const project of favResponse.projects) {
-                try {
-                    const response = await this.sendMessageToBackground('getIssueTypes', { projectId: project.id });
-                    if (response.success) {
-                        for (const issueType of response.issueTypes) {
-                            // 同名の種別は重複を避ける
-                            const key = `${issueType.name}`;
-                            if (!seenIds.has(key)) {
-                                seenIds.add(key);
-                                allIssueTypes.push({
-                                    id: issueType.id,
-                                    name: issueType.name,
-                                    projectKey: project.projectKey
-                                });
-                            }
-                        }
+            // 選択されたスペースのお気に入りプロジェクトを取得
+            const response = await this.sendMessageToBackground('getFavoriteProjectsForSpace', { spaceId: spaceId });
+            
+            if (response.success && response.projects.length > 0) {
+                for (const project of response.projects) {
+                    const option = document.createElement('option');
+                    option.value = project.id;
+                    option.textContent = `${project.name} (${project.projectKey})`;
+                    this.templateProjectSelect.appendChild(option);
+                }
+                this.templateProjectSelect.disabled = false;
+            } else {
+                // お気に入りがない場合、全プロジェクトを取得
+                const allResponse = await this.sendMessageToBackground('getProjectsForSpace', { spaceId: spaceId });
+                if (allResponse.success && allResponse.projects.length > 0) {
+                    for (const project of allResponse.projects) {
+                        const option = document.createElement('option');
+                        option.value = project.id;
+                        option.textContent = `${project.name} (${project.projectKey})`;
+                        this.templateProjectSelect.appendChild(option);
                     }
-                } catch (e) {
-                    console.warn(`プロジェクト ${project.projectKey} の課題種別取得に失敗:`, e);
+                    this.templateProjectSelect.disabled = false;
                 }
             }
+        } catch (error) {
+            console.error('テンプレート用プロジェクト読み込みエラー:', error);
+            this.showTemplateMessage('プロジェクトの読み込みに失敗しました', 'error');
+        }
+    }
 
-            // セレクトに追加
-            if (this.templateIssueTypeSelect && allIssueTypes.length > 0) {
-                // デフォルトオプション以外をクリア
-                this.templateIssueTypeSelect.innerHTML = '<option value="__default__">デフォルト（全種別共通）</option>';
-                
-                allIssueTypes.forEach(issueType => {
+    /**
+     * テンプレート用プロジェクト変更ハンドラ
+     * プロジェクトを選択したら課題種別を読み込む
+     * @param {string} projectId - 選択されたプロジェクトID
+     */
+    async handleTemplateProjectChange(projectId) {
+        // 課題種別セレクトをリセット
+        this.templateIssueTypeSelect.innerHTML = '<option value="__default__">デフォルト（全種別共通）</option>';
+        this.templateIssueTypeSelect.disabled = true;
+        
+        if (!projectId) return;
+        
+        try {
+            const spaceId = this.templateSpaceSelect.value;
+            const response = await this.sendMessageToBackground('getIssueTypes', { 
+                projectId: parseInt(projectId, 10),
+                spaceId: spaceId
+            });
+            
+            if (response.success && response.issueTypes.length > 0) {
+                for (const issueType of response.issueTypes) {
                     const option = document.createElement('option');
                     option.value = issueType.id;
-                    option.textContent = `${issueType.name}`;
+                    option.textContent = issueType.name;
                     this.templateIssueTypeSelect.appendChild(option);
-                });
+                }
+                this.templateIssueTypeSelect.disabled = false;
             }
         } catch (error) {
             console.error('テンプレート用課題種別読み込みエラー:', error);
+            this.showTemplateMessage('課題種別の読み込みに失敗しました', 'error');
         }
     }
 
@@ -2781,7 +2640,7 @@ class SidePanelUI {
      * @param {string} text - カウント対象のテキスト
      */
     updateCharacterCounter(text) {
-        const length = text.length;
+        const length = (text || '').length;
         this.templateCharCounter.textContent = i18n.getMessage('templateCharCounter', [String(length)]);
     }
 
@@ -2821,6 +2680,7 @@ class SidePanelUI {
                 this.spaces = response.spaces || [];
                 this.renderSpaceList();
                 this.renderFavoriteSpaceSelect();
+                this.populateTemplateSpaceSelect();
                 console.log('スペース一覧を読み込みました:', this.spaces.length + '件');
             }
         } catch (error) {
