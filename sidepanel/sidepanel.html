@@ -67,61 +67,7 @@
                         </div>
                     </div>
 
-                    <!-- 旧API設定（後方互換性のため非表示で保持） -->
-                    <!-- APIキー未登録時の表示 -->
-                    <div id="apiKeyNotRegistered" class="api-key-section hidden">
-                        <div class="form-group">
-                            <label for="apiKeyInput" class="form-label" data-i18n="apiKeyLabel">BacklogのAPIキー</label>
-                            <input type="password" id="apiKeyInput" class="form-input" data-i18n-placeholder="apiKeyPlaceholder" placeholder="APIキーを入力してください">
-                        </div>
-                        <div class="form-group">
-                            <label for="domainInput" class="form-label" data-i18n="domainLabel">Backlogドメイン</label>
-                            <input type="text" id="domainInput" class="form-input" data-i18n-placeholder="domainPlaceholder" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
-                            <div class="form-help" data-i18n="domainHelp">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
-                        </div>
-                        <div class="form-group text-center">
-                            <button id="registerApiKeyBtn" class="btn btn-primary" data-i18n="registerApiKeyBtn">APIキーを登録</button>
-                        </div>
-                    </div>
 
-                    <!-- APIキー登録済み時の表示 -->
-                    <div id="apiKeyRegistered" class="api-key-section hidden">
-                        <div class="api-key-status">
-                            <div class="status-item">
-                                <span class="status-label" data-i18n="statusLabel">状態:</span>
-                                <span class="status-value success" data-i18n="statusRegistered">登録済み</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label" data-i18n="domainStatusLabel">ドメイン:</span>
-                                <span id="registeredDomain" class="status-value">-</span>
-                            </div>
-                            <div class="status-item">
-                                <span class="status-label" data-i18n="registeredDateLabel">登録日:</span>
-                                <span id="registeredDate" class="status-value">-</span>
-                            </div>
-                        </div>
-                        <div class="form-group text-center">
-                            <button id="changeApiKeyBtn" class="btn btn-secondary mt-2" data-i18n="changeBtn">変更</button>
-                            <button id="deleteApiKeyBtn" class="btn btn-danger mt-2" data-i18n="deleteBtn">削除</button>
-                        </div>
-                    </div>
-
-                    <!-- APIキー変更時の表示 -->
-                    <div id="apiKeyChange" class="api-key-section hidden">
-                        <div class="form-group">
-                            <label for="newApiKeyInput" class="form-label" data-i18n="newApiKeyLabel">新しいAPIキー</label>
-                            <input type="password" id="newApiKeyInput" class="form-input" data-i18n-placeholder="newApiKeyPlaceholder" placeholder="新しいAPIキーを入力してください">
-                        </div>
-                        <div class="form-group">
-                            <label for="newDomainInput" class="form-label" data-i18n="domainLabel">Backlogドメイン</label>
-                            <input type="text" id="newDomainInput" class="form-input" data-i18n-placeholder="domainPlaceholder" placeholder="例: xxx.backlog.jp または yyy.backlog.com">
-                            <div class="form-help" data-i18n="domainHelp">完全なドメイン名を入力してください（例: mycompany.backlog.jp）</div>
-                        </div>
-                        <div class="form-group text-center">
-                            <button id="updateApiKeyBtn" class="btn btn-primary" data-i18n="updateBtn">更新</button>
-                            <button id="cancelChangeBtn" class="btn btn-secondary" data-i18n="cancelBtn">キャンセル</button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- お気に入りプロジェクト設定 -->
@@ -160,8 +106,20 @@
                 <h2 data-i18n="templateTitle">説明文テンプレート</h2>
                 <div class="template-editor-section">
                     <div class="form-group">
+                        <label for="templateSpaceSelect" class="form-label">スペース選択</label>
+                        <select id="templateSpaceSelect" class="form-input">
+                            <option value="">スペースを選択してください</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="templateProjectSelect" class="form-label">プロジェクト選択</label>
+                        <select id="templateProjectSelect" class="form-input" disabled>
+                            <option value="">プロジェクトを選択してください</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
                         <label for="templateIssueTypeSelect" class="form-label" data-i18n="templateIssueTypeLabel">課題種別ごとのテンプレート</label>
-                        <select id="templateIssueTypeSelect" class="form-input">
+                        <select id="templateIssueTypeSelect" class="form-input" disabled>
                             <option value="__default__" data-i18n="templateIssueTypeDefault">デフォルト（全種別共通）</option>
                         </select>
                         <div class="form-help" data-i18n="templateIssueTypeHelp">種別を選択してテンプレートを個別に設定できます。未設定の種別はデフォルトが使用されます。</div>
