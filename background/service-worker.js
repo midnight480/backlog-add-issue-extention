@@ -93,9 +93,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     case 'getIssueTypes':
       willRespondAsync = true;
-      handleGetIssueTypes(message.projectId)
-        .then(result => sendResponse(result))
-        .catch(error => sendResponse({ success: false, error: error.message }));
+      if (message.spaceId) {
+        handleGetIssueTypesForSpace(message.spaceId, message.projectId)
+          .then(result => sendResponse(result))
+          .catch(error => sendResponse({ success: false, error: error.message }));
+      } else {
+        handleGetIssueTypes(message.projectId)
+          .then(result => sendResponse(result))
+          .catch(error => sendResponse({ success: false, error: error.message }));
+      }
       break;
       
     case 'createIssue':
@@ -281,7 +287,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'getIssueTypeTemplate':
       // Backlog APIから課題種別のテンプレートを取得
       willRespondAsync = true;
-      handleGetIssueTypeTemplate(message.issueTypeId)
+      handleGetIssueTypeTemplate(message.issueTypeId, message.spaceId, message.projectId)
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: error.message }));
       break;
@@ -2153,28 +2159,38 @@ async function saveTemplateForIssueType(template, issueTypeId) {
  * プロジェクトのカスタムフィールドやWikiなどから取得する代わりに
  * 課題種別の情報（templateDescription）を返す
  * @param {string} issueTypeId - 課題種別ID
+ * @param {string} spaceId - スペースID（省略時は旧API設定を使用）
+ * @param {number} projectId - プロジェクトID（省略時はお気に入りプロジェクトから検索）
  * @returns {Promise<{success: boolean, template?: string}>}
  */
-async function handleGetIssueTypeTemplate(issueTypeId) {
+async function handleGetIssueTypeTemplate(issueTypeId, spaceId, projectId) {
   try {
-    const apiKeyResult = await handleGetApiKey();
-    if (!apiKeyResult.success) {
-      return { success: false, message: 'APIキーが設定されていません' };
+    let apiKey, domain;
+    
+    if (spaceId) {
+      // スペースIDが指定されている場合はスペースの認証情報を使用
+      const credentials = await getSpaceCredentials(spaceId);
+      if (!credentials.success) {
+        return { success: false, message: credentials.message };
+      }
+      apiKey = credentials.apiKey;
+      domain = credentials.domain;
+    } else {
+      // 後方互換性: 旧API設定から取得
+      const apiKeyResult = await handleGetApiKey();
+      if (!apiKeyResult.success) {
+        return { success: false, message: 'APIキーが設定されていません' };
+      }
+      apiKey = apiKeyResult.apiKey;
+      domain = apiKeyResult.domain;
     }
     
-    const { apiKey, domain } = apiKeyResult;
     const baseUrl = buildBacklogApiUrl(domain);
     
-    // お気に入りプロジェクトを取得して、該当する課題種別を探す
-    const favResult = await handleGetFavoriteProjects();
-    if (!favResult.success || favResult.projects.length === 0) {
-      return { success: false, message: 'お気に入りプロジェクトが設定されていません' };
-    }
-    
-    // 各プロジェクトの課題種別を確認
-    for (const project of favResult.projects) {
+    if (projectId) {
+      // プロジェクトIDが指定されている場合、そのプロジェクトの課題種別を直接取得
       try {
-        const response = await fetch(`${baseUrl}/projects/${project.id}/issueTypes?apiKey=${apiKey}`);
+        const response = await fetch(`${baseUrl}/projects/${projectId}/issueTypes?apiKey=${apiKey}`);
         if (response.ok) {
           const issueTypes = await response.json();
           const matchedType = issueTypes.find(t => t.id.toString() === issueTypeId.toString());
@@ -2183,7 +2199,28 @@ async function handleGetIssueTypeTemplate(issueTypeId) {
           }
         }
       } catch (e) {
-        console.warn(`プロジェクト ${project.projectKey} の課題種別取得に失敗:`, e);
+        console.warn(`プロジェクト ${projectId} の課題種別取得に失敗:`, e);
+      }
+    } else {
+      // プロジェクトIDが未指定の場合、お気に入りプロジェクトから探す
+      const favResult = await handleGetFavoriteProjects();
+      if (!favResult.success || favResult.projects.length === 0) {
+        return { success: false, message: 'お気に入りプロジェクトが設定されていません' };
+      }
+      
+      for (const project of favResult.projects) {
+        try {
+          const response = await fetch(`${baseUrl}/projects/${project.id}/issueTypes?apiKey=${apiKey}`);
+          if (response.ok) {
+            const issueTypes = await response.json();
+            const matchedType = issueTypes.find(t => t.id.toString() === issueTypeId.toString());
+            if (matchedType && matchedType.templateDescription) {
+              return { success: true, template: matchedType.templateDescription };
+            }
+          }
+        } catch (e) {
+          console.warn(`プロジェクト ${project.projectKey} の課題種別取得に失敗:`, e);
+        }
       }
     }
     
