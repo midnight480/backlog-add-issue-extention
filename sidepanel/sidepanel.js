@@ -2435,6 +2435,12 @@ class SidePanelUI {
             option.textContent = space.name || space.domain;
             this.templateSpaceSelect.appendChild(option);
         }
+        
+        // スペースが1つだけの場合は自動選択してプロジェクトを読み込む
+        if (this.spaces.length === 1) {
+            this.templateSpaceSelect.value = this.spaces[0].id;
+            this.handleTemplateSpaceChange(this.spaces[0].id);
+        }
     }
 
     /**
@@ -2455,7 +2461,7 @@ class SidePanelUI {
         
         try {
             // 選択されたスペースのお気に入りプロジェクトのみを取得
-            const response = await this.sendMessageToBackground('getFavoriteProjectsForSpace', { spaceId: spaceId });
+            const response = await this.sendMessageToBackground('getFavoriteProjects', { spaceId: spaceId });
             
             if (response.success && response.projects.length > 0) {
                 for (const project of response.projects) {
