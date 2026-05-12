@@ -2454,7 +2454,7 @@ class SidePanelUI {
         if (!spaceId) return;
         
         try {
-            // 選択されたスペースのお気に入りプロジェクトを取得
+            // 選択されたスペースのお気に入りプロジェクトのみを取得
             const response = await this.sendMessageToBackground('getFavoriteProjectsForSpace', { spaceId: spaceId });
             
             if (response.success && response.projects.length > 0) {
@@ -2466,17 +2466,7 @@ class SidePanelUI {
                 }
                 this.templateProjectSelect.disabled = false;
             } else {
-                // お気に入りがない場合、全プロジェクトを取得
-                const allResponse = await this.sendMessageToBackground('getProjectsForSpace', { spaceId: spaceId });
-                if (allResponse.success && allResponse.projects.length > 0) {
-                    for (const project of allResponse.projects) {
-                        const option = document.createElement('option');
-                        option.value = project.id;
-                        option.textContent = `${project.name} (${project.projectKey})`;
-                        this.templateProjectSelect.appendChild(option);
-                    }
-                    this.templateProjectSelect.disabled = false;
-                }
+                this.showTemplateMessage('お気に入りプロジェクトが設定されていません。先にお気に入りプロジェクトを設定してください。', 'error');
             }
         } catch (error) {
             console.error('テンプレート用プロジェクト読み込みエラー:', error);
