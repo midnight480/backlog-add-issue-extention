@@ -1743,7 +1743,6 @@ async function handleCreateIssue(projectId, summary, description, issueTypeId) {
     
     // クエリパラメータとしてURLに追加
     const urlWithParams = `${baseUrl}/issues?${params.toString()}`;
-    console.log('送信するURL:', urlWithParams);
     
     const response = await fetch(urlWithParams, {
       method: 'POST',
