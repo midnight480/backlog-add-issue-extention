@@ -178,13 +178,26 @@ class I18nManager {
             }
         });
 
-        // data-i18n-html 属性を持つ要素のinnerHTMLを置換
+        // data-i18n-html 属性を持つ要素のinnerHTMLを置換（安全なタグのみ許可）
         document.querySelectorAll('[data-i18n-html]').forEach((el) => {
             const key = el.getAttribute('data-i18n-html');
             const text = this.getMessage(key);
             if (text !== key) {
-                el.innerHTML = text;
+                el.innerHTML = this.sanitizeHtml(text);
             }
+        });
+    }
+
+    /**
+     * HTMLをサニタイズし、許可されたタグのみを残す
+     * @param {string} html - サニタイズ対象のHTML文字列
+     * @returns {string} サニタイズ済みHTML
+     */
+    sanitizeHtml(html) {
+        const allowedTags = ['br', 'code', 'b', 'i', 'em', 'strong'];
+        // 許可されたタグ以外を除去
+        return html.replace(/<\/?([a-zA-Z][a-zA-Z0-9]*)\b[^>]*>/g, (match, tag) => {
+            return allowedTags.includes(tag.toLowerCase()) ? match : '';
         });
     }
 }
