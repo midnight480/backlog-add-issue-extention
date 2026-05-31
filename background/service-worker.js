@@ -57,7 +57,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       break;
       
     case 'saveApiKey':
-      console.log('saveApiKey リクエスト受信:', { apiKey: message.apiKey ? message.apiKey.substring(0, 10) + '...' : 'なし', domain: message.domain });
       willRespondAsync = true;
       handleSaveApiKey(message.apiKey, message.domain)
         .then(result => {
@@ -123,13 +122,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       handleGetActiveTabPageInfo()
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ error: error.message }));
-      break;
-      
-    case 'debugApiKey':
-      willRespondAsync = true;
-      handleDebugApiKey()
-        .then(result => sendResponse(result))
-        .catch(error => sendResponse({ success: false, error: error.message }));
       break;
       
     case 'resetFeatures':
@@ -1302,7 +1294,6 @@ async function handleSaveApiKey(apiKey, domain) {
     
     // 簡易的な暗号化（実際の実装では、より強固な暗号化を使用）
     const encryptedKey = btoa(apiKey + ':' + Date.now());
-    console.log('APIキー暗号化（最初の10文字）:', apiKey.substring(0, 10) + '...');
     
     const apiKeyData = {
       encryptedKey: encryptedKey,
@@ -1373,7 +1364,6 @@ async function handleGetApiKey() {
     try {
       const decryptedData = atob(encryptedKey);
       apiKey = decryptedData.split(':')[0];
-      console.log('APIキー復号化成功（最初の10文字）:', apiKey.substring(0, 10) + '...');
     } catch (decryptError) {
       console.error('APIキー復号化エラー:', decryptError);
       throw new Error('保存されたAPIキーの復号化に失敗しました');
@@ -1671,7 +1661,6 @@ async function handleCreateIssue(projectId, summary, description, issueTypeId) {
     }
     
     const { apiKey, domain } = apiKeyResult;
-    console.log('使用するAPIキー（最初の10文字）:', apiKey.substring(0, 10) + '...');
     
     // ネットワーク機能の確認
     if (!gracefulDegradation.isFeatureAvailable('network')) {

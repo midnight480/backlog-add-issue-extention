@@ -34,7 +34,21 @@
   "content_scripts": [
     {
       "matches": [
-        "<all_urls>"
+        "https://*.backlog.jp/*",
+        "https://*.backlog.com/*",
+        "https://*.backlogtool.com/*",
+        "https://*.zendesk.com/*",
+        "https://*.intercom.com/*",
+        "https://*.intercom.io/*",
+        "https://*.my.connect.aws/*",
+        "https://*.awsapps.com/*",
+        "https://*.manageengine.com/*",
+        "https://*.manageengine.jp/*",
+        "https://*.hubspot.com/*",
+        "https://*.salesforce.com/*",
+        "https://*.force.com/*",
+        "https://*.cybozu.com/*",
+        "https://*.kintone.com/*"
       ],
       "js": [
         "content/url-extractor.js"
