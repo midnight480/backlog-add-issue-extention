@@ -32,9 +32,39 @@ chrome.runtime.onStartup.addListener(() => {
   console.log('Add Issue Service Worker started');
 });
 
+/**
+ * ログ出力用にメッセージ内の機密情報をマスクする
+ * @param {Object} message - 受信メッセージ
+ * @returns {Object} マスク済みメッセージ
+ */
+function sanitizeMessageForLog(message) {
+  if (!message || typeof message !== 'object') {
+    return message;
+  }
+  const sanitized = { ...message };
+  if ('apiKey' in sanitized) {
+    sanitized.apiKey = '[REDACTED]';
+  }
+  if (sanitized.space && typeof sanitized.space === 'object' && 'apiKey' in sanitized.space) {
+    sanitized.space = { ...sanitized.space, apiKey: '[REDACTED]' };
+  }
+  return sanitized;
+}
+
+// Content Script（タブ由来）から受け付けるアクションの許可リスト
+// ページ上のスクリプトが拡張機能の特権操作（APIキー取得・課題作成等）を呼び出せないようにする
+const CONTENT_SCRIPT_ALLOWED_ACTIONS = ['ping', 'contentScriptLoaded', 'getCurrentPageInfo'];
+
 // 他のコンポーネントからのメッセージ処理
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('メッセージを受信:', message);
+  console.log('メッセージを受信:', sanitizeMessageForLog(message));
+  
+  // 送信元検証: タブ（Content Script）由来のメッセージは許可リストのアクションのみ受け付ける
+  if (sender.tab && !CONTENT_SCRIPT_ALLOWED_ACTIONS.includes(message.action)) {
+    console.warn('Content Scriptからの未許可アクションを拒否:', message.action);
+    sendResponse({ success: false, error: '許可されていない送信元です' });
+    return false;
+  }
   
   // 非同期処理のためのフラグ
   let willRespondAsync = false;
@@ -105,9 +135,22 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       
     case 'createIssue':
       willRespondAsync = true;
-      handleCreateIssue(message.projectId, message.summary, message.description, message.issueTypeId)
+      handleCreateIssue(message.projectId, message.summary, message.description, message.issueTypeId, message.customFields)
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ error: error.message }));
+      break;
+      
+    case 'getCustomFields':
+      willRespondAsync = true;
+      if (message.spaceId) {
+        handleGetCustomFieldsForSpace(message.spaceId, message.projectId)
+          .then(result => sendResponse(result))
+          .catch(error => sendResponse({ success: false, error: error.message }));
+      } else {
+        handleGetCustomFields(message.projectId)
+          .then(result => sendResponse(result))
+          .catch(error => sendResponse({ success: false, error: error.message }));
+      }
       break;
       
     case 'getCurrentUser':
@@ -255,7 +298,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     case 'createIssueForSpace':
       // 指定スペースで課題を作成
       willRespondAsync = true;
-      handleCreateIssueForSpace(message.spaceId, message.projectId, message.summary, message.description, message.issueTypeId)
+      handleCreateIssueForSpace(message.spaceId, message.projectId, message.summary, message.description, message.issueTypeId, message.customFields)
         .then(result => sendResponse(result))
         .catch(error => sendResponse({ success: false, error: error.message }));
       break;
@@ -381,7 +424,7 @@ function showErrorNotification(title, message) {
     if (chrome.notifications) {
       chrome.notifications.create({
         type: 'basic',
-        iconUrl: 'assets/icon-128.png',
+        iconUrl: 'assets/icon128.png',
         title: title,
         message: message,
         priority: 1
@@ -1627,7 +1670,7 @@ async function handleGetProjects() {
  * @param {string} description - 課題の説明
  * @returns {Promise<{success: boolean, issue?: Object, message?: string}>}
  */
-async function handleCreateIssue(projectId, summary, description, issueTypeId) {
+async function handleCreateIssue(projectId, summary, description, issueTypeId, customFields) {
   const transactionId = `create_issue_${Date.now()}`;
   
   try {
@@ -1720,6 +1763,9 @@ async function handleCreateIssue(projectId, summary, description, issueTypeId) {
     // 期限日を今日に設定（yyyy-MM-dd形式）
     const today = new Date().toISOString().split('T')[0];
     params.append('dueDate', today);
+    
+    // カスタム属性を追加
+    appendCustomFieldParams(params, customFields);
     
     console.log('課題作成パラメータ:', {
       projectId: projectId,
@@ -1865,6 +1911,74 @@ async function handleGetIssueTypes(projectId) {
     console.error('課題種別取得エラー:', error);
     return { success: false, message: error.message };
   }
+}
+
+/**
+ * プロジェクトのカスタム属性一覧を取得する
+ * @param {string} projectId - プロジェクトID
+ * @returns {Promise<{success: boolean, customFields?: Array, message?: string}>}
+ */
+async function handleGetCustomFields(projectId) {
+  try {
+    // APIキーを取得
+    const apiKeyResult = await handleGetApiKey();
+    if (!apiKeyResult.success) {
+      return { success: false, message: 'APIキーが設定されていません' };
+    }
+    
+    const { apiKey, domain } = apiKeyResult;
+    const baseUrl = buildBacklogApiUrl(domain);
+    
+    const response = await fetch(`${baseUrl}/projects/${projectId}/customFields?apiKey=${apiKey}`);
+    
+    if (!response.ok) {
+      let errorMessage = 'カスタム属性の取得に失敗しました';
+      
+      if (response.status === 401) {
+        errorMessage = 'APIキーが無効です';
+      } else if (response.status === 404) {
+        errorMessage = 'プロジェクトが見つかりません';
+      } else if (response.status === 403) {
+        errorMessage = 'このプロジェクトのカスタム属性を取得する権限がありません';
+      }
+      
+      throw new Error(errorMessage);
+    }
+    
+    const customFields = await response.json();
+    console.log('カスタム属性を取得しました:', customFields.length + '件');
+    return { success: true, customFields: customFields };
+    
+  } catch (error) {
+    console.error('カスタム属性取得エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
+ * カスタム属性の値を課題作成パラメータに追加する
+ * @param {URLSearchParams} params - リクエストパラメータ
+ * @param {Array<{id: number|string, value: *}>} customFields - カスタム属性の値
+ */
+function appendCustomFieldParams(params, customFields) {
+  if (!Array.isArray(customFields)) {
+    return;
+  }
+  customFields.forEach(field => {
+    if (!field || field.id === undefined || field.id === null) {
+      return;
+    }
+    const key = `customField_${field.id}`;
+    if (Array.isArray(field.value)) {
+      field.value.forEach(v => {
+        if (v !== undefined && v !== null && v !== '') {
+          params.append(key, v);
+        }
+      });
+    } else if (field.value !== undefined && field.value !== null && field.value !== '') {
+      params.append(key, field.value);
+    }
+  });
 }
 
 /**
@@ -2572,6 +2686,39 @@ async function handleGetIssueTypesForSpace(spaceId, projectId) {
 }
 
 /**
+ * 指定スペースのプロジェクトのカスタム属性一覧を取得する
+ * @param {string} spaceId - スペースID
+ * @param {string} projectId - プロジェクトID
+ * @returns {Promise<{success: boolean, customFields?: Array, message?: string}>}
+ */
+async function handleGetCustomFieldsForSpace(spaceId, projectId) {
+  try {
+    const credentials = await getSpaceCredentials(spaceId);
+    if (!credentials.success) {
+      return { success: false, message: credentials.message };
+    }
+    
+    const { apiKey, domain } = credentials;
+    const baseUrl = buildBacklogApiUrl(domain);
+    
+    const response = await fetch(`${baseUrl}/projects/${projectId}/customFields?apiKey=${apiKey}`);
+    
+    if (!response.ok) {
+      let errorMessage = 'カスタム属性の取得に失敗しました';
+      if (response.status === 401) errorMessage = 'APIキーが無効です';
+      else if (response.status === 404) errorMessage = 'プロジェクトが見つかりません';
+      throw new Error(errorMessage);
+    }
+    
+    const customFields = await response.json();
+    return { success: true, customFields: customFields };
+  } catch (error) {
+    console.error('スペースカスタム属性取得エラー:', error);
+    return { success: false, message: error.message };
+  }
+}
+
+/**
  * 指定スペースで課題を作成する
  * @param {string} spaceId - スペースID
  * @param {string} projectId - プロジェクトID
@@ -2580,7 +2727,7 @@ async function handleGetIssueTypesForSpace(spaceId, projectId) {
  * @param {string} issueTypeId - 課題種別ID
  * @returns {Promise<{success: boolean, issue?: Object, message?: string}>}
  */
-async function handleCreateIssueForSpace(spaceId, projectId, summary, description, issueTypeId) {
+async function handleCreateIssueForSpace(spaceId, projectId, summary, description, issueTypeId, customFields) {
   try {
     console.log('スペースでの課題作成:', { spaceId, projectId, summary: summary.substring(0, 20) + '...' });
     
@@ -2645,6 +2792,9 @@ async function handleCreateIssueForSpace(spaceId, projectId, summary, descriptio
     
     const today = new Date().toISOString().split('T')[0];
     params.append('dueDate', today);
+    
+    // カスタム属性を追加
+    appendCustomFieldParams(params, customFields);
     
     const response = await fetch(`${baseUrl}/issues?${params.toString()}`, {
       method: 'POST',

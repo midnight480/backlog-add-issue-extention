@@ -105,12 +105,16 @@ class SidePanelUI {
         this.issueDescription = document.getElementById('issueDescription');
         this.createIssueBtn = document.getElementById('createIssueBtn');
         this.issueCreationStatus = document.getElementById('issueCreationStatus');
+        this.customFieldsSection = document.getElementById('customFieldsSection');
+        this.customFieldsList = document.getElementById('customFieldsList');
+        this.customFieldsError = document.getElementById('customFieldsError');
 
         // プロジェクト関連の状態
         this.allProjects = [];
         this.filteredProjects = [];
         this.selectedProjectData = null;
         this.projectIssueTypes = [];
+        this.projectCustomFields = []; // 選択中プロジェクトのカスタム属性
         this.projectsLoaded = false; // 要件7.1: プロジェクト一覧の遅延読み込みフラグ
 
         // お気に入りプロジェクト関連の状態
@@ -823,6 +827,7 @@ class SidePanelUI {
                     this.selectedProjectData = null;
                     this.issueFormSection.classList.add('hidden');
                     this.clearIssueTypes();
+                    this.clearCustomFields();
                     await this.saveState();
                 }
             });
@@ -1504,6 +1509,7 @@ class SidePanelUI {
         } else {
             await this.loadProjectIssueTypes(project.id);
         }
+        await this.loadProjectCustomFields(project.id);
         await this.loadCurrentPageInfo();
         
         // 説明欄が空の場合のみテンプレートを適用
@@ -1533,6 +1539,7 @@ class SidePanelUI {
         }
         
         this.clearIssueTypes();
+        this.clearCustomFields();
         
         // 説明欄もクリア
         if (this.issueDescription) {
@@ -1688,6 +1695,302 @@ class SidePanelUI {
     }
 
     /**
+     * プロジェクトのカスタム属性を読み込む
+     * @param {string} projectId - プロジェクトID
+     */
+    async loadProjectCustomFields(projectId) {
+        try {
+            const request = { projectId };
+            if (this.selectedSpaceId) {
+                request.spaceId = this.selectedSpaceId;
+            }
+            const response = await this.sendMessageToBackground('getCustomFields', request);
+            
+            if (response.success) {
+                this.projectCustomFields = response.customFields || [];
+                console.log('カスタム属性を読み込みました:', this.projectCustomFields.length + '件');
+            } else {
+                this.projectCustomFields = [];
+                console.warn('カスタム属性の読み込みに失敗:', response.message);
+            }
+        } catch (error) {
+            console.error('カスタム属性読み込みエラー:', error);
+            this.projectCustomFields = [];
+        }
+        this.renderCustomFields();
+    }
+
+    /**
+     * 選択中の課題種別に適用されるカスタム属性を取得
+     * @returns {Array} 表示対象のカスタム属性
+     */
+    getVisibleCustomFields() {
+        const selectedIssueTypeId = this.issueTypeSelect && this.issueTypeSelect.value
+            ? parseInt(this.issueTypeSelect.value, 10)
+            : null;
+        return (this.projectCustomFields || []).filter(field => {
+            if (!field.applicableIssueTypes || field.applicableIssueTypes.length === 0) {
+                return true;
+            }
+            return selectedIssueTypeId !== null && field.applicableIssueTypes.includes(selectedIssueTypeId);
+        });
+    }
+
+    /**
+     * カスタム属性の入力欄を描画
+     */
+    renderCustomFields() {
+        if (!this.customFieldsSection || !this.customFieldsList) {
+            return;
+        }
+        this.customFieldsList.innerHTML = '';
+        this.hideCustomFieldsError();
+
+        const visibleFields = this.getVisibleCustomFields();
+        if (visibleFields.length === 0) {
+            this.customFieldsSection.classList.add('hidden');
+            return;
+        }
+        this.customFieldsSection.classList.remove('hidden');
+
+        visibleFields.forEach(field => {
+            this.customFieldsList.appendChild(this.createCustomFieldElement(field));
+        });
+    }
+
+    /**
+     * カスタム属性の入力要素を生成
+     * @param {Object} field - カスタム属性定義
+     * @returns {HTMLElement} フォームグループ要素
+     */
+    createCustomFieldElement(field) {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'form-group custom-field';
+        wrapper.dataset.fieldId = field.id;
+        wrapper.dataset.fieldType = field.typeId;
+
+        const label = document.createElement('label');
+        label.className = 'form-label';
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = field.name;
+        label.appendChild(nameSpan);
+        if (field.required) {
+            const requiredSpan = document.createElement('span');
+            requiredSpan.className = 'required';
+            requiredSpan.textContent = ' *';
+            label.appendChild(requiredSpan);
+        }
+        wrapper.appendChild(label);
+
+        const control = this.createCustomFieldControl(field);
+        if (control) {
+            wrapper.appendChild(control);
+        }
+
+        if (field.description) {
+            const help = document.createElement('div');
+            help.className = 'form-help';
+            help.textContent = field.description;
+            wrapper.appendChild(help);
+        }
+
+        return wrapper;
+    }
+
+    /**
+     * カスタム属性のタイプ別入力コントロールを生成
+     * @param {Object} field - カスタム属性定義
+     * @returns {HTMLElement|null} 入力要素
+     */
+    createCustomFieldControl(field) {
+        const items = field.items || [];
+        switch (field.typeId) {
+            case 1: { // テキスト
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'form-input custom-field-input';
+                return input;
+            }
+            case 2: { // 文章
+                const textarea = document.createElement('textarea');
+                textarea.className = 'form-textarea custom-field-input';
+                textarea.rows = 2;
+                return textarea;
+            }
+            case 3: { // 数値
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.className = 'form-input custom-field-input';
+                if (field.min !== undefined && field.min !== null) input.min = field.min;
+                if (field.max !== undefined && field.max !== null) input.max = field.max;
+                return input;
+            }
+            case 4: { // 日付
+                const input = document.createElement('input');
+                input.type = 'date';
+                input.className = 'form-input custom-field-input';
+                return input;
+            }
+            case 5: { // 単一リスト
+                const select = document.createElement('select');
+                select.className = 'form-input custom-field-input';
+                const placeholder = document.createElement('option');
+                placeholder.value = '';
+                placeholder.textContent = i18n.getMessage('customFieldsSelectPlaceholder');
+                select.appendChild(placeholder);
+                items.forEach(item => {
+                    const option = document.createElement('option');
+                    option.value = item.id;
+                    option.textContent = item.name;
+                    select.appendChild(option);
+                });
+                return select;
+            }
+            case 6: // 複数リスト
+            case 7: { // チェックボックス
+                const group = document.createElement('div');
+                group.className = 'custom-field-options';
+                items.forEach(item => {
+                    const itemLabel = document.createElement('label');
+                    itemLabel.className = 'custom-field-option';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.value = item.id;
+                    itemLabel.appendChild(checkbox);
+                    const text = document.createElement('span');
+                    text.textContent = item.name;
+                    itemLabel.appendChild(text);
+                    group.appendChild(itemLabel);
+                });
+                return group;
+            }
+            case 8: { // ラジオボタン
+                const group = document.createElement('div');
+                group.className = 'custom-field-options';
+                items.forEach(item => {
+                    const itemLabel = document.createElement('label');
+                    itemLabel.className = 'custom-field-option';
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `custom-field-${field.id}`;
+                    radio.value = item.id;
+                    itemLabel.appendChild(radio);
+                    const text = document.createElement('span');
+                    text.textContent = item.name;
+                    itemLabel.appendChild(text);
+                    group.appendChild(itemLabel);
+                });
+                return group;
+            }
+            default:
+                console.warn('未対応のカスタム属性タイプ:', field.typeId);
+                return null;
+        }
+    }
+
+    /**
+     * 入力されたカスタム属性の値を収集
+     * @returns {Array<{id: number, value: *}>} カスタム属性の値
+     */
+    collectCustomFieldValues() {
+        const values = [];
+        if (!this.customFieldsList) {
+            return values;
+        }
+        const visibleIds = new Set(this.getVisibleCustomFields().map(field => field.id));
+        (this.projectCustomFields || []).forEach(field => {
+            if (!visibleIds.has(field.id)) {
+                return;
+            }
+            const container = this.customFieldsList.querySelector(`[data-field-id="${field.id}"]`);
+            if (!container) {
+                return;
+            }
+            switch (field.typeId) {
+                case 1:
+                case 2:
+                case 3:
+                case 4: {
+                    const input = container.querySelector('input, textarea');
+                    if (input && input.value.trim() !== '') {
+                        values.push({ id: field.id, value: input.value.trim() });
+                    }
+                    break;
+                }
+                case 5: {
+                    const select = container.querySelector('select');
+                    if (select && select.value !== '') {
+                        values.push({ id: field.id, value: select.value });
+                    }
+                    break;
+                }
+                case 6:
+                case 7: {
+                    const checked = Array.from(container.querySelectorAll('input[type="checkbox"]:checked'))
+                        .map(checkbox => checkbox.value);
+                    if (checked.length > 0) {
+                        values.push({ id: field.id, value: checked });
+                    }
+                    break;
+                }
+                case 8: {
+                    const radio = container.querySelector('input[type="radio"]:checked');
+                    if (radio) {
+                        values.push({ id: field.id, value: radio.value });
+                    }
+                    break;
+                }
+            }
+        });
+        return values;
+    }
+
+    /**
+     * 必須のカスタム属性が入力されているか検証
+     * @returns {boolean} バリデーション結果
+     */
+    validateCustomFields() {
+        const requiredFields = this.getVisibleCustomFields().filter(field => field.required);
+        if (requiredFields.length === 0) {
+            this.hideCustomFieldsError();
+            return true;
+        }
+        const enteredIds = new Set(this.collectCustomFieldValues().map(v => v.id));
+        const missing = requiredFields.some(field => !enteredIds.has(field.id));
+        if (missing) {
+            if (this.customFieldsError) {
+                this.customFieldsError.classList.remove('hidden');
+            }
+            return false;
+        }
+        this.hideCustomFieldsError();
+        return true;
+    }
+
+    /**
+     * カスタム属性エラーを非表示
+     */
+    hideCustomFieldsError() {
+        if (this.customFieldsError) {
+            this.customFieldsError.classList.add('hidden');
+        }
+    }
+
+    /**
+     * カスタム属性をクリア
+     */
+    clearCustomFields() {
+        this.projectCustomFields = [];
+        if (this.customFieldsList) {
+            this.customFieldsList.innerHTML = '';
+        }
+        if (this.customFieldsSection) {
+            this.customFieldsSection.classList.add('hidden');
+        }
+        this.hideCustomFieldsError();
+    }
+
+    /**
      * 課題種別変更処理
      * @param {string} issueTypeId - 選択された課題種別ID
      */
@@ -1707,6 +2010,9 @@ class SidePanelUI {
                 }
             }
         }
+        
+        // 課題種別に応じてカスタム属性の表示を更新
+        this.renderCustomFields();
         
         this.updateCreateButtonState();
     }
@@ -1965,6 +2271,7 @@ class SidePanelUI {
         const summary = this.issueSummary.value.trim();
         const description = this.issueDescription.value.trim();
         const issueTypeId = this.issueTypeSelect.value;
+        const customFields = this.collectCustomFieldValues();
 
         try {
             this.createIssueBtn.disabled = true;
@@ -1980,7 +2287,8 @@ class SidePanelUI {
                     projectId: this.selectedProjectData.id,
                     summary: summary,
                     description: description,
-                    issueTypeId: issueTypeId
+                    issueTypeId: issueTypeId,
+                    customFields: customFields
                 });
             } else {
                 // 後方互換性: スペース未選択の場合は従来通り
@@ -1988,7 +2296,8 @@ class SidePanelUI {
                     projectId: this.selectedProjectData.id,
                     summary: summary,
                     description: description,
-                    issueTypeId: issueTypeId
+                    issueTypeId: issueTypeId,
+                    customFields: customFields
                 });
             }
 
@@ -2099,6 +2408,7 @@ class SidePanelUI {
         this.updateIssueDescription();
         this.hideSummaryError();
         this.hideIssueTypeError();
+        this.renderCustomFields();
     }
 
     /**
@@ -2135,6 +2445,10 @@ class SidePanelUI {
             }
 
             if (!this.issueTypeSelect.value) {
+                isValid = false;
+            }
+
+            if (!this.validateCustomFields()) {
                 isValid = false;
             }
         }

@@ -17,6 +17,7 @@ This is a Chrome extension that provides API key management and issue creation f
 - **Auto-Embed URLs**: Automatically inserts the current browser tab's URL and title into the issue description.
 - **Auto-Configuration**: Automatically sets the assignee and due date.
 - **Dynamic Configuration**: Automatically retrieves issue types and priorities per project.
+- **Custom Fields**: Set project custom attributes (text, number, date, list, etc.) when creating issues.
 
 ### Supported Environments
 - Google Chrome 114 and later (Supports Manifest V3 and Side Panel API)
