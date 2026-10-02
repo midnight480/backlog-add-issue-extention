@@ -59,8 +59,11 @@ const CONTENT_SCRIPT_ALLOWED_ACTIONS = ['ping', 'contentScriptLoaded', 'getCurre
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('メッセージを受信:', sanitizeMessageForLog(message));
   
-  // 送信元検証: タブ（Content Script）由来のメッセージは許可リストのアクションのみ受け付ける
-  if (sender.tab && !CONTENT_SCRIPT_ALLOWED_ACTIONS.includes(message.action)) {
+  // 送信元検証: Content Script 由来のメッセージは許可リストのアクションのみ受け付ける
+  // sender.tab は拡張機能自身のページをタブで開いた場合にもセットされるため、
+  // 拡張機能のURLからのメッセージは対象外とする
+  const isExtensionPage = sender.url && sender.url.startsWith(chrome.runtime.getURL(''));
+  if (sender.tab && !isExtensionPage && !CONTENT_SCRIPT_ALLOWED_ACTIONS.includes(message.action)) {
     console.warn('Content Scriptからの未許可アクションを拒否:', message.action);
     sendResponse({ success: false, error: '許可されていない送信元です' });
     return false;
