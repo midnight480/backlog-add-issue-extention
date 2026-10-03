@@ -180,3 +180,11 @@
 **Context**: CONSTRUCTION PHASE - Build and Test 完了
 
 ---
+
+## User Request - 脆弱性対応とカスタム属性対応
+**Timestamp**: 2026-10-02T15:20:00Z
+**User Input**: 脆弱性対応をして。対象のプロジェクトのカスタム属性を設定できるようにして。
+**AI Response**: npm依存の8件の脆弱性をnpm audit fixで解消(0件)。Service WorkerのメッセージログからAPIキー露出を防止(sanitizeMessageForLog)。Content Script由来メッセージのアクション許可リストを追加。プロジェクトのカスタム属性取得(GET /projects/{id}/customFields)・表示・課題作成時のcustomField_{id}送信を実装。
+**Context**: CONSTRUCTION PHASE - Code Generation
+
+---

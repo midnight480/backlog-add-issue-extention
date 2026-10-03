@@ -193,6 +193,15 @@
   "required": {
     "message": "*"
   },
+  "customFieldsTitle": {
+    "message": "Custom fields"
+  },
+  "customFieldsRequired": {
+    "message": "Please fill in the required custom fields"
+  },
+  "customFieldsSelectPlaceholder": {
+    "message": "Please select"
+  },
   "addSpaceBtn": {
     "message": "Add Space"
   },

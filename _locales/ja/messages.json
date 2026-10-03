@@ -193,6 +193,15 @@
   "required": {
     "message": "*"
   },
+  "customFieldsTitle": {
+    "message": "カスタム属性"
+  },
+  "customFieldsRequired": {
+    "message": "必須のカスタム属性を入力してください"
+  },
+  "customFieldsSelectPlaceholder": {
+    "message": "選択してください"
+  },
   "addSpaceBtn": {
     "message": "スペースを追加"
   },

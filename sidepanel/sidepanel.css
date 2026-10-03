@@ -511,6 +511,38 @@ body {
     margin-top: 4px;
 }
 
+/* カスタム属性セクション */
+.custom-fields-section {
+    margin-bottom: 16px;
+}
+
+.custom-fields-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin: 0 0 8px 0;
+}
+
+.custom-field-options {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 0;
+}
+
+.custom-field-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.custom-field-option input[type="checkbox"],
+.custom-field-option input[type="radio"] {
+    margin: 0;
+}
+
 /* フルワイドボタン */
 .btn-full {
     width: 100%;
